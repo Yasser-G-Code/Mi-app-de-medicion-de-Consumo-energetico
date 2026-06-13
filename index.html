@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0f766e" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Consumo de Luz" />
+<title>Consumo de Luz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<style>
+  :root{
+    --bg:#eef2f6;
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --line:#e6eaf0;
+    --primary:#0d9488;
+    --primary-d:#0f766e;
+    --accent:#f59e0b;
+    --max:#ef4444;
+    --min:#10b981;
+    --shadow:0 6px 24px rgba(15,23,42,.07);
+    --shadow-sm:0 2px 8px rgba(15,23,42,.05);
+    --r:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior-y:none;
+  }
+  .app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--bg);
+    position:relative;
+    padding-bottom:96px;
+  }
+  /* Header */
+  .topbar{
+    padding:calc(env(safe-area-inset-top) + 18px) 20px 14px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .topbar h1{font-size:19px;font-weight:800;margin:0;letter-spacing:-.3px;display:flex;align-items:center;gap:8px;}
+  .topbar h1 .bolt{
+    width:30px;height:30px;border-radius:9px;
+    background:linear-gradient(135deg,#14b8a6,#0f766e);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    box-shadow:0 4px 10px rgba(13,148,136,.35);
+  }
+  .topbar .sub{font-size:12px;color:var(--muted);font-weight:500;}
+  .screen{display:none;padding:0 16px;animation:fade .25s ease;}
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  /* Hero */
+  .hero{
+    border-radius:24px;
+    background:linear-gradient(135deg,#0f766e 0%,#0d9488 55%,#14b8a6 100%);
+    color:#fff;padding:22px 22px 20px;position:relative;overflow:hidden;
+    box-shadow:0 14px 30px rgba(13,148,136,.30);
+  }
+  .hero:after{content:"";position:absolute;right:-40px;top:-50px;width:170px;height:170px;border-radius:50%;background:rgba(255,255,255,.10);}
+  .hero:before{content:"";position:absolute;right:30px;bottom:-60px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);}
+  .hero-top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;}
+  .hero .label{font-size:13px;opacity:.9;font-weight:500;}
+  .month-pill{background:rgba(255,255,255,.20);border-radius:20px;padding:5px 13px;font-size:12.5px;font-weight:700;backdrop-filter:blur(4px);white-space:nowrap;}
+  .hero .big{font-size:46px;font-weight:800;letter-spacing:-1.5px;line-height:1.05;margin-top:2px;}
+  .hero .big small{font-size:18px;font-weight:600;opacity:.85;margin-left:4px;}
+  .hero .row{display:flex;gap:7px;margin-top:16px;position:relative;z-index:1;}
+  .hero .chip{background:rgba(255,255,255,.16);border-radius:12px;padding:9px 10px;flex:1;backdrop-filter:blur(4px);min-width:0;}
+  .hero .chip .t{font-size:11px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hero .chip .v{font-size:15px;font-weight:700;margin-top:3px;line-height:1.15;}
+  .hero .chip .v small{font-size:10px;font-weight:600;opacity:.8;}
+
+  /* Stat grid */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;}
+  .stat{background:var(--card);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow-sm);}
+  .stat .t{font-size:12px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:6px;}
+  .stat .v{font-size:24px;font-weight:800;margin-top:6px;letter-spacing:-.5px;}
+  .stat .v small{font-size:13px;font-weight:600;color:var(--muted);margin-left:3px;}
+  .stat .d{font-size:11px;margin-top:3px;color:var(--muted);}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+
+  .card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow-sm);margin-top:14px;}
+  .card h3{margin:0 0 12px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between;}
+  .card h3 .hint{font-size:11px;color:var(--muted);font-weight:500;}
+
+  .seg{display:flex;background:#f1f5f9;border-radius:12px;padding:4px;gap:4px;margin-bottom:14px;}
+  .seg button{flex:1;border:0;background:transparent;padding:8px 4px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;transition:.15s;}
+  .seg button.active{background:#fff;color:var(--primary-d);box-shadow:var(--shadow-sm);}
+
+  .chart-wrap{position:relative;height:230px;}
+
+  /* Insight */
+  .insight{display:flex;gap:10px;align-items:center;padding:12px;border-radius:14px;margin-top:10px;}
+  .insight.max{background:#fef2f2;}
+  .insight.min{background:#ecfdf5;}
+  .insight .ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-weight:800;}
+  .insight.max .ic{background:var(--max);}
+  .insight.min .ic{background:var(--min);}
+  .insight .tt{font-size:12px;color:var(--muted);}
+  .insight .vv{font-size:15px;font-weight:700;}
+
+  /* Form */
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;color:#334155;}
+  .field .help{font-size:11px;color:var(--muted);font-weight:400;margin-top:6px;}
+  input,textarea{
+    width:100%;border:1.5px solid var(--line);background:#fff;border-radius:13px;
+    padding:13px 14px;font-size:16px;font-family:inherit;color:var(--text);transition:.15s;
+  }
+  input:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(13,148,136,.12);}
+  textarea{resize:vertical;min-height:64px;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .inputwrap{position:relative;}
+  .inputwrap .unit{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:600;color:var(--muted);pointer-events:none;}
+  .btn{
+    width:100%;border:0;border-radius:14px;padding:15px;font-size:15.5px;font-weight:700;
+    font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;
+  }
+  .btn-primary{background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff;box-shadow:0 8px 18px rgba(13,148,136,.28);}
+  .btn-primary:active{transform:scale(.985);}
+  .btn-ghost{background:#fff;color:var(--text);border:1.5px solid var(--line);box-shadow:var(--shadow-sm);}
+  .btn-ghost.danger{color:var(--max);border-color:#fecaca;}
+  .btn-row{display:flex;gap:10px;margin-top:10px;}
+  .btn-row .btn{flex:1;}
+  .now-banner{font-size:12px;color:var(--primary-d);background:#ccfbf1;border-radius:10px;padding:8px 11px;margin-bottom:14px;font-weight:500;display:flex;gap:7px;align-items:center;}
+
+  /* lists */
+  .rlist{margin-top:6px;}
+  .ritem{display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid var(--line);}
+  .ritem:last-child{border-bottom:0;}
+  .ritem .ico{width:42px;height:42px;border-radius:12px;background:#f0fdfa;color:var(--primary-d);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;line-height:1;}
+  .ritem .ico .d{font-size:16px;font-weight:800;}
+  .ritem .ico .m{font-size:9px;font-weight:600;text-transform:uppercase;margin-top:1px;}
+  .ritem .mid{flex:1;min-width:0;}
+  .ritem .mid .l1{font-size:14.5px;font-weight:700;}
+  .ritem .mid .l2{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ritem .amt{text-align:right;flex-shrink:0;}
+  .ritem .amt .k{font-size:15px;font-weight:800;}
+  .ritem .amt .u{font-size:10px;color:var(--muted);}
+  .badge{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:20px;display:inline-block;margin-top:3px;}
+  .badge.max{background:#fef2f2;color:var(--max);}
+  .badge.min{background:#ecfdf5;color:#059669;}
+  .iconbtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);}
+  .iconbtn:active{background:#f1f5f9;}
+  .iconbtn.del{color:var(--max);border-color:#fde2e2;}
+
+  .empty{text-align:center;padding:46px 20px;color:var(--muted);}
+  .empty .e-ic{font-size:42px;margin-bottom:12px;}
+  .empty .e-t{font-weight:700;color:var(--text);font-size:15px;}
+  .empty .e-d{font-size:13px;margin-top:6px;line-height:1.5;}
+
+  .section-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:18px 4px 8px;}
+
+  /* bottom nav */
+  .nav{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;
+    max-width:480px;margin:0 auto;
+    background:rgba(255,255,255,.92);backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);
+    display:flex;padding:8px 6px calc(env(safe-area-inset-bottom) + 8px);
+  }
+  .nav button{
+    flex:1;border:0;background:transparent;padding:6px 2px;cursor:pointer;font-family:inherit;
+    display:flex;flex-direction:column;align-items:center;gap:3px;color:#94a3b8;font-size:10.5px;font-weight:600;transition:.15s;
+  }
+  .nav button svg{width:23px;height:23px;}
+  .nav button.active{color:var(--primary-d);}
+  .nav .fab{transform:translateY(-14px);}
+  .nav .fab .fab-c{width:50px;height:50px;border-radius:16px;background:linear-gradient(135deg,#14b8a6,#0f766e);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 8px 18px rgba(13,148,136,.40);}
+  .nav .fab .fab-c svg{width:26px;height:26px;}
+
+  /* toast */
+  .toast{
+    position:fixed;left:50%;bottom:108px;transform:translateX(-50%) translateY(20px);
+    background:#0f172a;color:#fff;padding:12px 18px;border-radius:13px;font-size:13.5px;font-weight:600;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.3s;z-index:100;max-width:90%;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.err{background:#b91c1c;}
+
+  .micro{font-size:11px;color:var(--muted);text-align:center;margin-top:18px;line-height:1.5;}
+  a.link{color:var(--primary-d);font-weight:600;text-decoration:none;}
+
+  /* checkbox inicio de mes */
+  .check{display:flex;align-items:flex-start;gap:11px;padding:13px 14px;border:1.5px solid var(--line);border-radius:13px;cursor:pointer;transition:.15s;background:#fff;}
+  .check.on{border-color:var(--primary);background:#f0fdfa;}
+  .check input{width:auto;margin:0;flex-shrink:0;width:20px;height:20px;accent-color:var(--primary);margin-top:1px;}
+  .check>span{display:block;}
+  .check .ct{display:block;font-size:13.5px;font-weight:600;color:#334155;}
+  .check .cd{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:3px;line-height:1.4;}
+
+  /* límite mensual */
+  .limit-card{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow-sm);margin-top:14px;}
+  .limit-card .lh{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+  .limit-card .lh .lt{font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px;}
+  .limit-card .lh .lst{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;}
+  .lst.ok{background:#ecfdf5;color:#059669;}
+  .lst.warn{background:#fffbeb;color:#b45309;}
+  .lst.over{background:#fef2f2;color:#dc2626;}
+  .limit-nums{display:flex;align-items:baseline;gap:6px;margin:8px 0 12px;}
+  .limit-nums .cur{font-size:32px;font-weight:800;letter-spacing:-.8px;}
+  .limit-nums .of{font-size:15px;color:var(--muted);font-weight:600;}
+  .bar{height:12px;border-radius:8px;background:#eef2f6;overflow:hidden;position:relative;}
+  .bar .fill{height:100%;border-radius:8px;transition:width .5s ease;}
+  .bar .fill.ok{background:linear-gradient(90deg,#34d399,#10b981);}
+  .bar .fill.warn{background:linear-gradient(90deg,#fbbf24,#f59e0b);}
+  .bar .fill.over{background:linear-gradient(90deg,#f87171,#ef4444);}
+  .limit-foot{display:flex;justify-content:space-between;margin-top:10px;gap:10px;}
+  .limit-foot .lf{flex:1;background:#f8fafc;border-radius:11px;padding:9px 11px;}
+  .limit-foot .lf .t{font-size:10.5px;color:var(--muted);font-weight:500;}
+  .limit-foot .lf .v{font-size:15px;font-weight:800;margin-top:2px;}
+  .limit-empty{font-size:13px;color:var(--muted);line-height:1.5;text-align:center;padding:6px 0;}
+  select{width:100%;border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:13px 14px;font-size:15px;font-family:inherit;color:var(--text);-webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:40px;}
+  select:focus{outline:none;border-color:var(--primary);}
+  .ms-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:#ccfbf1;color:var(--primary-d);margin-left:6px;}
+  .rcons{display:inline-block;font-size:11.5px;font-weight:700;color:var(--primary-d);background:#f0fdfa;padding:2px 9px;border-radius:8px;margin-top:5px;}
+  .rcons.pending{color:var(--muted);background:#f1f5f9;}
+  .l-meter{font-size:12px;color:#475569;margin-top:2px;}
+  .l-meter b{color:#1e293b;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <h1><span class="bolt">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" stroke="none"/></svg>
+    </span>Consumo de Luz</h1>
+    <div class="sub" id="todayLabel"></div>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section id="screen-dashboard" class="screen active">
+    <div class="hero">
+      <div class="hero-top">
+        <div class="label">Consumo este mes</div>
+        <div class="month-pill" id="heroMonthName">—</div>
+      </div>
+      <div class="big" id="heroMonth">0<small>kWh</small></div>
+      <div class="row">
+        <div class="chip"><div class="t">Inicio</div><div class="v" id="heroStart">—</div></div>
+        <div class="chip"><div class="t">Actual</div><div class="v" id="heroReading">—</div></div>
+        <div class="chip"><div class="t">Prom./día</div><div class="v" id="heroAvg">—</div></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="stat">
+        <div class="t"><span class="dot" style="background:var(--primary)"></span>Hoy / último</div>
+        <div class="v" id="stToday">—<small>kWh</small></div>
+        <div class="d" id="stTodayD">Sin datos</div>
+      </div>
+      <div class="stat">
+        <div class="t"><span class="dot" style="background:#3b82f6"></span>Esta semana</div>
+        <div class="v" id="stWeek">—<small>kWh</small></div>
+        <div class="d" id="stWeekD">Lun – Dom</div>
+      </div>
+      <div class="stat">
+        <div class="t"><span class="dot" style="background:var(--accent)"></span>Esta quincena</div>
+        <div class="v" id="stQuin">—<small>kWh</small></div>
+        <div class="d" id="stQuinD">—</div>
+      </div>
+      <div class="stat">
+        <div class="t"><span class="dot" style="background:#8b5cf6"></span>Este mes</div>
+        <div class="v" id="stMonth">—<small>kWh</small></div>
+        <div class="d" id="stMonthD">—</div>
+      </div>
+    </div>
+
+    <div class="limit-card" id="limitCard"></div>
+
+    <div class="card">
+      <h3>Tendencia de consumo</h3>
+      <div class="seg" id="chartSeg">
+        <button data-p="dia" class="active">Diario</button>
+        <button data-p="semana">Semanal</button>
+        <button data-p="quincena">Quincenal</button>
+        <button data-p="mes">Mensual</button>
+      </div>
+      <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+    </div>
+
+    <div class="card" id="insightCard">
+      <h3>Días destacados</h3>
+      <div id="insights"></div>
+    </div>
+  </section>
+
+  <!-- ============ REGISTRO ============ -->
+  <section id="screen-registro" class="screen">
+    <div class="card">
+      <h3 id="formTitle">Nueva lectura</h3>
+      <div class="now-banner" id="formMode">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        Apunta la lectura de tu medidor a las 8:00 AM cada día.
+      </div>
+      <div class="two">
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date" id="fDate" />
+        </div>
+        <div class="field">
+          <label>Hora</label>
+          <input type="time" id="fTime" value="08:00" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Lectura del medidor</label>
+        <div class="inputwrap">
+          <input type="number" id="fValue" inputmode="decimal" step="0.01" placeholder="Ej. 1542.80" />
+          <span class="unit">kWh</span>
+        </div>
+        <div class="help">Es el número acumulado que marca tu contador. El consumo del día se calcula solo.</div>
+      </div>
+      <div class="field">
+        <label>Observación del día <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+        <textarea id="fNote" placeholder="Ej. día caluroso, usé el aire acondicionado, etc."></textarea>
+      </div>
+      <div class="field">
+        <label class="check" id="msCheck" onclick="toggleMonthStart(event)">
+          <input type="checkbox" id="fMonthStart" />
+          <span><span class="ct">🏁 Lectura inicial del mes</span><span class="cd">Marca esto en tu primera lectura del mes para fijar desde cuántos kWh empiezas a contar. Aparecerá en el reporte como "inicio de mes".</span></span>
+        </label>
+      </div>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveReading()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        Guardar lectura
+      </button>
+      <div class="btn-row" id="editActions" style="display:none">
+        <button class="btn btn-ghost" onclick="cancelEdit()">Cancelar edición</button>
+      </div>
+    </div>
+
+    <div class="section-title">Lecturas registradas</div>
+    <div class="card" id="readingsCard">
+      <div class="rlist" id="readingsList"></div>
+    </div>
+  </section>
+
+  <!-- ============ HISTORIAL ============ -->
+  <section id="screen-historial" class="screen">
+    <div class="grid2">
+      <div class="stat">
+        <div class="t">Total consumido</div>
+        <div class="v" id="hTotal">—<small>kWh</small></div>
+        <div class="d" id="hDays">—</div>
+      </div>
+      <div class="stat">
+        <div class="t">Promedio / día</div>
+        <div class="v" id="hAvg">—<small>kWh</small></div>
+        <div class="d">desde el inicio</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Historial diario <span class="hint" id="histHint"></span></h3>
+      <div class="rlist" id="historyList"></div>
+    </div>
+  </section>
+
+  <!-- ============ REPORTE / AJUSTES ============ -->
+  <section id="screen-reporte" class="screen">
+    <div class="card">
+      <h3>Límite de consumo mensual</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 12px;">
+        Define cuántos kWh quieres no superar al mes. El dashboard te mostrará en tiempo real cuánto llevas y cuánto te falta.
+      </p>
+      <div class="field" style="margin-bottom:10px">
+        <div class="inputwrap">
+          <input type="number" id="fLimit" inputmode="decimal" step="1" placeholder="Ej. 200" />
+          <span class="unit">kWh / mes</span>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveLimit()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        Guardar límite
+      </button>
+    </div>
+
+    <div class="card">
+      <h3>Generar reporte</h3>
+      <p style="font-size:13.5px;color:var(--muted);line-height:1.55;margin:0 0 12px;">
+        Reporte profesional con el consumo de cada día, observaciones, inicio y fin de cada mes, totales por semana/quincena/mes, días de mayor y menor consumo, y estado del límite.
+      </p>
+      <div class="field">
+        <label>Período del reporte</label>
+        <select id="reportMonth"></select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="generatePDF()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          PDF
+        </button>
+        <button class="btn btn-ghost" onclick="generateWord()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13l1.5 5 1.5-4 1.5 4 1.5-5"/></svg>
+          Word
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Resumen de períodos</h3>
+      <div id="periodSummary"></div>
+    </div>
+
+    <div class="section-title">Datos y respaldo</div>
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="exportData()">Exportar respaldo</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">Importar</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)" />
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-ghost danger" onclick="clearAll()">Borrar todos los datos</button>
+      </div>
+      <div class="micro">Tus datos se guardan solo en este dispositivo (almacenamiento local del navegador). Exporta un respaldo de vez en cuando para no perderlos.</div>
+    </div>
+  </section>
+
+  <!-- nav -->
+  <nav class="nav">
+    <button data-screen="dashboard" class="active" onclick="showScreen('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      Dashboard
+    </button>
+    <button data-screen="historial" onclick="showScreen('historial')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      Historial
+    </button>
+    <button class="fab" onclick="goRegister()">
+      <span class="fab-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+    </button>
+    <button data-screen="registro" onclick="showScreen('registro')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+      Lecturas
+    </button>
+    <button data-screen="reporte" onclick="showScreen('reporte')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      Reporte
+    </button>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Modelo de datos: cada registro es una LECTURA del medidor.
+   reading = { id, date:'YYYY-MM-DD', time:'HH:MM', value:Number, note:String }
+   El consumo de cada día = diferencia entre lecturas consecutivas.
+============================================================ */
+const KEY='medidorLuz.readings.v1';
+const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MESES_L=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let editingId=null;
+let mainChart=null;
+let chartPeriod='dia';
+
+/* ---------- almacenamiento ---------- */
+function getReadings(){ try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return [];} }
+function setReadings(r){ localStorage.setItem(KEY,JSON.stringify(r)); }
+const SKEY='medidorLuz.settings.v1';
+function getSettings(){ try{return JSON.parse(localStorage.getItem(SKEY))||{};}catch(e){return {};} }
+function setSettings(s){ localStorage.setItem(SKEY,JSON.stringify(s)); }
+function getLimit(){ const v=getSettings().monthlyLimit; return (typeof v==='number'&&v>0)?v:null; }
+
+/* ---------- helpers de fecha ---------- */
+function dt(r){ return new Date(r.date+'T'+(r.time||'08:00')); }
+function parseD(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function fmtNum(n,dec=2){ return new Intl.NumberFormat('es',{minimumFractionDigits:0,maximumFractionDigits:dec}).format(n); }
+function fmtDateLong(s){ const d=parseD(s); return d.getDate()+' '+MESES[d.getMonth()]+'. '+d.getFullYear(); }
+function fmtDateShort(s){ const d=parseD(s); return d.getDate()+' '+MESES[d.getMonth()]; }
+function weekStart(d){ const x=new Date(d); const day=(x.getDay()+6)%7; x.setDate(x.getDate()-day); x.setHours(0,0,0,0); return x; }
+function isoWeekKey(d){
+  const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const dn=(x.getUTCDay()+6)%7; x.setUTCDate(x.getUTCDate()-dn+3);
+  const ft=new Date(Date.UTC(x.getUTCFullYear(),0,4));
+  const wk=1+Math.round(((x-ft)/864e5-3+((ft.getUTCDay()+6)%7))/7);
+  return x.getUTCFullYear()+'-W'+String(wk).padStart(2,'0');
+}
+function quincenaKey(d){ return d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0')+'-Q'+(d.getDate()<=15?1:2); }
+function monthKey(d){ return d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0'); }
+
+/* ---------- núcleo: segmentos de consumo ---------- */
+/* Para cada par de lecturas consecutivas calcula el consumo (delta).
+   Se atribuye a la fecha de la lectura ANTERIOR (consumo "de ese día"). */
+function getSegments(){
+  const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
+  const segs=[];
+  for(let i=1;i<rs.length;i++){
+    const p=rs[i-1], c=rs[i];
+    const kwh=+(c.value-p.value).toFixed(3);
+    const ms=dt(c)-dt(p);
+    const days=Math.max(1,Math.round(ms/864e5));
+    segs.push({date:p.date,endDate:c.date,startTime:p.time,endTime:c.time,days,kwh,valid:kwh>=0,note:p.note||c.note||'',startValue:p.value,endValue:c.value});
+  }
+  return segs;
+}
+/* mapa fecha -> consumo (solo válidos), sumando si hay varios */
+function dailyMap(){
+  const m={};
+  getSegments().forEach(s=>{ if(!s.valid)return; m[s.date]=(m[s.date]||0)+s.kwh; });
+  return m;
+}
+function sumByKey(keyFn){
+  const out={};
+  getSegments().forEach(s=>{ if(!s.valid)return; const k=keyFn(parseD(s.date)); out[k]=(out[k]||0)+s.kwh; });
+  return out;
+}
+function stats(){
+  const segs=getSegments().filter(s=>s.valid);
+  const total=segs.reduce((a,s)=>a+s.kwh,0);
+  const totalDays=segs.reduce((a,s)=>a+s.days,0);
+  const dm=dailyMap();
+  const days=Object.keys(dm);
+  let maxD=null,minD=null;
+  days.forEach(d=>{ if(maxD===null||dm[d]>dm[maxD])maxD=d; if(minD===null||dm[d]<dm[minD])minD=d; });
+  return {total,totalDays,avg:totalDays?total/totalDays:0,dm,maxD,minD,nDays:days.length};
+}
+
+/* ---------- desglose mensual: inicio / fin / consumo ----------
+   La lectura INICIAL del mes es la marcada como "inicio de mes"; si no hay,
+   se usa la lectura previa (arrastre del mes anterior) o la primera del mes.
+   El consumo del mes = lectura final − lectura inicial. */
+function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
+function monthlyBreakdown(){
+  const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
+  if(!rs.length)return [];
+  const months=[];
+  rs.forEach(r=>{ const mk=monthKey(parseD(r.date)); if(!months.includes(mk))months.push(mk); });
+  // lectura inicial de cada mes (marcada, arrastre del mes previo, o primera del mes)
+  const iniOf={};
+  months.forEach(mk=>{
+    const inMonth=rs.filter(r=>monthKey(parseD(r.date))===mk);
+    let iniR=inMonth.find(r=>r.monthStart);
+    const anchored=!!iniR;
+    if(!iniR){ const fi=rs.indexOf(inMonth[0]); iniR=fi>0?rs[fi-1]:inMonth[0]; }
+    iniOf[mk]={iniR,anchored};
+  });
+  const lastReading=rs[rs.length-1];
+  // meses contiguos: el fin de un mes = el inicio del siguiente (como en facturación)
+  return months.map((mk,i)=>{
+    const {iniR,anchored}=iniOf[mk];
+    const finR = months[i+1] ? iniOf[months[i+1]].iniR : lastReading;
+    const [y,m]=mk.split('-').map(Number);
+    return {
+      key:mk,year:y,month:m,label:MESES_L[m]+' '+y,
+      inicioVal:iniR.value,inicioDate:iniR.date,finVal:finR.value,finDate:finR.date,
+      consumo:Math.max(0,+(finR.value-iniR.value).toFixed(3)),
+      anchored, single:(iniR===finR)
+    };
+  });
+}
+function monthInfo(mk){ return monthlyBreakdown().find(x=>x.key===mk)||null; }
+function limitState(consumo,limit){
+  if(!limit)return null;
+  const pct=consumo/limit*100;
+  let state='ok'; if(consumo>limit)state='over'; else if(pct>=80)state='warn';
+  return {pct,state,remaining:limit-consumo};
+}
+
+/* ============================================================
+   RENDER
+============================================================ */
+function render(){
+  renderDashboard();
+  renderLimit();
+  renderReadings();
+  renderHistory();
+  renderPeriods();
+  renderReportMonths();
+  document.getElementById('fLimit').value=getLimit()||'';
+}
+
+function renderDashboard(){
+  const s=stats();
+  const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
+  const now=new Date();
+
+  // este mes (lectura final − lectura inicial del mes)
+  const curInfo=monthInfo(monthKey(now));
+  const monthSum=curInfo?curInfo.consumo:0;
+  document.getElementById('heroMonth').innerHTML=fmtNum(monthSum)+'<small>kWh</small>';
+  document.getElementById('heroMonthName').textContent=MESES_L[now.getMonth()]+' '+now.getFullYear();
+  document.getElementById('heroStart').innerHTML=curInfo?fmtNum(curInfo.inicioVal,0)+'<small> kWh</small>':'—';
+  document.getElementById('heroAvg').innerHTML=s.avg?fmtNum(s.avg)+'<small> kWh</small>':'—';
+  const lastR=rs[rs.length-1];
+  document.getElementById('heroReading').innerHTML=lastR?fmtNum(lastR.value,0)+'<small> kWh</small>':'—';
+
+  // hoy/último
+  const segs=getSegments().filter(x=>x.valid);
+  const last=segs[segs.length-1];
+  document.getElementById('stToday').innerHTML=(last?fmtNum(last.kwh):'—')+'<small>kWh</small>';
+  document.getElementById('stTodayD').textContent=last?('consumo del '+fmtDateShort(last.date)+(last.days>1?' · '+last.days+' días':'')):'Registra 2 lecturas';
+
+  // semana actual
+  const wk=sumByKey(isoWeekKey)[isoWeekKey(now)]||0;
+  document.getElementById('stWeek').innerHTML=fmtNum(wk)+'<small>kWh</small>';
+
+  // quincena actual
+  const q=sumByKey(quincenaKey)[quincenaKey(now)]||0;
+  document.getElementById('stQuin').innerHTML=fmtNum(q)+'<small>kWh</small>';
+  document.getElementById('stQuinD').textContent=(now.getDate()<=15?'1ª':'2ª')+' quincena';
+
+  document.getElementById('stMonth').innerHTML=fmtNum(monthSum)+'<small>kWh</small>';
+  document.getElementById('stMonthD').textContent=curInfo?('desde '+fmtNum(curInfo.inicioVal,0)+' kWh'):MESES_L[now.getMonth()];
+
+  // insights
+  const ins=document.getElementById('insights');
+  if(s.maxD){
+    ins.innerHTML=
+      '<div class="insight max"><div class="ic">▲</div><div><div class="tt">Día de MAYOR consumo</div><div class="vv">'+fmtDateLong(s.maxD)+' · '+fmtNum(s.dm[s.maxD])+' kWh</div></div></div>'+
+      '<div class="insight min"><div class="ic">▼</div><div><div class="tt">Día de MENOR consumo</div><div class="vv">'+fmtDateLong(s.minD)+' · '+fmtNum(s.dm[s.minD])+' kWh</div></div></div>';
+    document.getElementById('insightCard').style.display='';
+  } else {
+    document.getElementById('insightCard').style.display='none';
+  }
+  renderChart();
+}
+
+function renderLimit(){
+  const el=document.getElementById('limitCard');
+  const limit=getLimit();
+  const now=new Date();
+  const info=monthInfo(monthKey(now));
+  const consumo=info?info.consumo:0;
+  const mesNom=MESES_L[now.getMonth()];
+  if(!limit){
+    el.innerHTML='<div class="lh"><div class="lt">🎯 Límite mensual</div></div>'+
+      '<div class="limit-empty">Aún no defines un límite de consumo.<br><span class="link" style="cursor:pointer" onclick="showScreen(\'reporte\')">Configúralo en la pestaña Reporte ›</span></div>';
+    return;
+  }
+  const ls=limitState(consumo,limit);
+  const dim=daysInMonth(now.getFullYear(),now.getMonth());
+  const dayN=now.getDate();
+  const projection=dayN>0?consumo/dayN*dim:0;
+  const col=ls.state==='over'?'#dc2626':ls.state==='warn'?'#b45309':'#0f766e';
+  const stTxt=ls.state==='over'?'LÍMITE SUPERADO':ls.state==='warn'?'CERCA DEL LÍMITE':'DENTRO DEL LÍMITE';
+  const remPos=ls.remaining>=0;
+  el.innerHTML=
+    '<div class="lh"><div class="lt">🎯 Límite de '+mesNom+'</div><div class="lst '+ls.state+'">'+stTxt+'</div></div>'+
+    '<div class="limit-nums"><span class="cur" style="color:'+col+'">'+fmtNum(consumo)+'</span><span class="of">de '+fmtNum(limit,0)+' kWh</span></div>'+
+    '<div class="bar"><div class="fill '+ls.state+'" style="width:'+Math.min(100,ls.pct)+'%"></div></div>'+
+    '<div class="limit-foot">'+
+      '<div class="lf"><div class="t">'+(remPos?'Te falta para el límite':'Superaste el límite por')+'</div><div class="v" style="color:'+(remPos?'#0f766e':'#dc2626')+'">'+fmtNum(Math.abs(ls.remaining))+' kWh</div></div>'+
+      '<div class="lf"><div class="t">Proyección fin de mes</div><div class="v" style="color:'+(projection>limit?'#dc2626':'#0f766e')+'">'+fmtNum(projection)+' kWh</div></div>'+
+    '</div>'+
+    '<div style="font-size:11.5px;color:var(--muted);margin-top:11px;text-align:center;line-height:1.4">Al día '+dayN+' de '+mesNom+' llevas '+fmtNum(consumo)+' kWh'+
+      (ls.state==='over'?' · ⚠ ya pasaste tu límite':projection>limit?' · ⚠ a este ritmo lo superarás':' · ✓ vas dentro del límite')+'</div>';
+}
+
+function renderReportMonths(){
+  const sel=document.getElementById('reportMonth');
+  if(!sel)return;
+  const prev=sel.value;
+  const months=monthlyBreakdown().slice().reverse();
+  let html='<option value="all">Todos los meses (reporte completo)</option>';
+  months.forEach(m=>{ html+='<option value="'+m.key+'">'+m.label+'</option>'; });
+  sel.innerHTML=html;
+  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value=prev;
+}
+
+function chartData(){
+  if(chartPeriod==='dia'){
+    const dm=dailyMap();
+    const keys=Object.keys(dm).sort().slice(-14);
+    return {labels:keys.map(fmtDateShort),values:keys.map(k=>dm[k]),unit:'día'};
+  }
+  if(chartPeriod==='semana'){
+    const o=sumByKey(isoWeekKey); const keys=Object.keys(o).sort().slice(-12);
+    return {labels:keys.map(k=>'S'+k.split('W')[1]),values:keys.map(k=>o[k]),unit:'semana'};
+  }
+  if(chartPeriod==='quincena'){
+    const o=sumByKey(quincenaKey); const keys=Object.keys(o).sort().slice(-12);
+    return {labels:keys.map(k=>{const[y,m,q]=k.split('-');return MESES[+m]+' '+q;}),values:keys.map(k=>o[k]),unit:'quincena'};
+  }
+  const mb=monthlyBreakdown().slice(-12);
+  return {labels:mb.map(m=>MESES[m.month]+' '+String(m.year).slice(2)),values:mb.map(m=>m.consumo),unit:'mes'};
+}
+function renderChart(){
+  const d=chartData();
+  const ctx=document.getElementById('mainChart');
+  if(mainChart)mainChart.destroy();
+  if(!d.values.length){
+    mainChart=null;
+    ctx.getContext('2d').clearRect(0,0,ctx.width,ctx.height);
+    return;
+  }
+  const g=ctx.getContext('2d').createLinearGradient(0,0,0,230);
+  g.addColorStop(0,'rgba(20,184,166,.95)'); g.addColorStop(1,'rgba(13,148,136,.55)');
+  mainChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels:d.labels,datasets:[{data:d.values,backgroundColor:g,borderRadius:8,maxBarThickness:34}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtNum(c.parsed.y)+' kWh'}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10},color:'#94a3b8'}},
+        y:{beginAtZero:true,grid:{color:'#eef2f6'},ticks:{font:{size:10},color:'#94a3b8',callback:v=>fmtNum(v,0)}}
+      }
+    }
+  });
+}
+
+function renderReadings(){
+  const asc=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
+  // consumo de cada lectura = diferencia hasta la siguiente lectura
+  const consById={};
+  for(let i=0;i<asc.length-1;i++){ const diff=+(asc[i+1].value-asc[i].value).toFixed(3); consById[asc[i].id]=diff>=0?diff:null; }
+  const lastId=asc.length?asc[asc.length-1].id:null;
+  const rs=asc.slice().reverse();
+  const el=document.getElementById('readingsList');
+  if(!rs.length){
+    el.innerHTML='<div class="empty"><div class="e-ic">📋</div><div class="e-t">Sin lecturas aún</div><div class="e-d">Registra tu primera lectura del medidor usando el formulario de arriba.</div></div>';
+    return;
+  }
+  el.innerHTML=rs.map(r=>{
+    const d=parseD(r.date);
+    const cons=consById[r.id];
+    let consHtml;
+    if(r.id===lastId) consHtml='<span class="rcons pending">lectura más reciente</span>';
+    else if(cons==null) consHtml='<span class="rcons pending">— lectura menor</span>';
+    else consHtml='<span class="rcons">▸ '+fmtNum(cons)+' kWh consumidos</span>';
+    return '<div class="ritem">'+
+      '<div class="ico"'+(r.monthStart?' style="background:#ccfbf1;color:#0f766e"':'')+'><span class="d">'+d.getDate()+'</span><span class="m">'+MESES[d.getMonth()]+'</span></div>'+
+      '<div class="mid"><div class="l1">'+fmtNum(r.value)+' kWh'+(r.monthStart?'<span class="ms-badge">🏁 INICIO DE MES</span>':'')+'</div>'+
+      '<div class="l2">'+r.time+(r.note?' · '+escapeHtml(r.note):'')+'</div>'+
+      consHtml+'</div>'+
+      '<button class="iconbtn" onclick="editReading(\''+r.id+'\')" aria-label="Editar">'+
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>'+
+      '<button class="iconbtn del" onclick="deleteReading(\''+r.id+'\')" aria-label="Eliminar">'+
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>'+
+      '</div>';
+  }).join('');
+}
+
+function renderHistory(){
+  const s=stats();
+  document.getElementById('hTotal').innerHTML=fmtNum(s.total)+'<small>kWh</small>';
+  document.getElementById('hDays').textContent=s.totalDays?(s.totalDays+' días medidos'):'—';
+  document.getElementById('hAvg').innerHTML=(s.avg?fmtNum(s.avg):'—')+'<small>kWh</small>';
+
+  const dm=s.dm;
+  const keys=Object.keys(dm).sort((a,b)=>b.localeCompare(a));
+  const el=document.getElementById('historyList');
+  document.getElementById('histHint').textContent=keys.length?keys.length+' días':'';
+  if(!keys.length){
+    el.innerHTML='<div class="empty"><div class="e-ic">📊</div><div class="e-t">Aún no hay consumo calculado</div><div class="e-d">Necesitas al menos 2 lecturas en días distintos para ver el consumo diario.</div></div>';
+    return;
+  }
+  // notas y lectura del medidor por fecha (la lectura tomada ese día)
+  const noteByDate={}, meterByDate={};
+  getSegments().forEach(sg=>{
+    if(!sg.valid)return;
+    if(sg.note && !noteByDate[sg.date]) noteByDate[sg.date]=sg.note;
+    if(meterByDate[sg.date]===undefined) meterByDate[sg.date]=sg.startValue;
+  });
+  el.innerHTML=keys.map(k=>{
+    const d=parseD(k);
+    const isMax=k===s.maxD, isMin=k===s.minD;
+    let badge='';
+    if(isMax)badge='<span class="badge max">MÁS ALTO</span>';
+    else if(isMin)badge='<span class="badge min">MÁS BAJO</span>';
+    const note=noteByDate[k];
+    const meter=meterByDate[k];
+    return '<div class="ritem">'+
+      '<div class="ico" style="'+(isMax?'background:#fef2f2;color:#ef4444':isMin?'background:#ecfdf5;color:#059669':'')+'"><span class="d">'+d.getDate()+'</span><span class="m">'+MESES[d.getMonth()]+'</span></div>'+
+      '<div class="mid"><div class="l1">'+fmtDateLong(k)+'</div>'+
+      '<div class="l-meter">Medidor: <b>'+(meter!==undefined?fmtNum(meter):'—')+' kWh</b></div>'+
+      '<div class="l2">'+(note?escapeHtml(note):'Sin observación')+'</div></div>'+
+      '<div class="amt"><div class="k">'+fmtNum(dm[k])+'</div><div class="u">kWh consumidos</div>'+badge+'</div>'+
+      '</div>';
+  }).join('');
+}
+
+function renderPeriods(){
+  const wk=sumByKey(isoWeekKey), q=sumByKey(quincenaKey), mo=sumByKey(monthKey);
+  const sec=(title,obj,fmt)=>{
+    const keys=Object.keys(obj).sort((a,b)=>b.localeCompare(a));
+    if(!keys.length)return '';
+    return '<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">'+title+'</div>'+
+      keys.slice(0,6).map(k=>'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px"><span>'+fmt(k)+'</span><b>'+fmtNum(obj[k])+' kWh</b></div>').join('')+'</div>';
+  };
+  // sección mensual con inicio / fin
+  const mb=monthlyBreakdown().slice().reverse();
+  const limit=getLimit();
+  let monthSec='';
+  if(mb.length){
+    monthSec='<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Por mes (inicio → fin)</div>'+
+      mb.slice(0,8).map(m=>{
+        const ls=limitState(m.consumo,limit);
+        const tag=ls?(' <span style="font-size:10px;font-weight:700;color:'+(ls.state==='over'?'#dc2626':ls.state==='warn'?'#b45309':'#059669')+'">'+(ls.state==='over'?'▲ +'+fmtNum(m.consumo-limit):'✓ -'+fmtNum(limit-m.consumo))+'</span>'):'';
+        return '<div style="padding:9px 0;border-bottom:1px solid var(--line)">'+
+          '<div style="display:flex;justify-content:space-between;font-size:13.5px"><b>'+m.label+'</b><b>'+fmtNum(m.consumo)+' kWh'+tag+'</b></div>'+
+          '<div style="font-size:11.5px;color:var(--muted);margin-top:2px">Inicio '+fmtNum(m.inicioVal,0)+' kWh → Fin '+fmtNum(m.finVal,0)+' kWh'+(m.anchored?' · 🏁 anclado':'')+'</div>'+
+        '</div>';
+      }).join('')+'</div>';
+  }
+  const out=
+    monthSec+
+    sec('Por quincena',q,k=>{const[y,m,qq]=k.split('-');return qq.replace('Q','')+'ª quincena '+MESES_L[+m]+' '+y;})+
+    sec('Por semana',wk,k=>'Semana '+k.split('W')[1]+' · '+k.split('-')[0]);
+  document.getElementById('periodSummary').innerHTML=out||'<div class="empty" style="padding:20px"><div class="e-d">Registra lecturas para ver los totales por período.</div></div>';
+}
+
+/* ============================================================
+   ACCIONES DE FORMULARIO
+============================================================ */
+function goRegister(){ showScreen('registro'); if(!editingId) resetForm(); }
+function setMonthStartCheck(v){
+  document.getElementById('fMonthStart').checked=v;
+  document.getElementById('msCheck').classList.toggle('on',v);
+}
+function toggleMonthStart(e){
+  // el label envuelve el input; dejamos que el click natural cambie el checkbox salvo que se clique el input
+  if(e.target.id!=='fMonthStart'){ e.preventDefault(); const c=document.getElementById('fMonthStart'); c.checked=!c.checked; }
+  document.getElementById('msCheck').classList.toggle('on',document.getElementById('fMonthStart').checked);
+}
+function resetForm(){
+  editingId=null;
+  const t=new Date();
+  const ds=t.toISOString().slice(0,10);
+  document.getElementById('fDate').value=ds;
+  document.getElementById('fTime').value='08:00';
+  document.getElementById('fValue').value='';
+  document.getElementById('fNote').value='';
+  // sugerir "inicio de mes" si aún no hay ninguna lectura registrada este mes
+  const mk=monthKey(t);
+  const hayEsteMes=getReadings().some(r=>monthKey(parseD(r.date))===mk);
+  setMonthStartCheck(!hayEsteMes && getReadings().length>0 ? true : (!getReadings().length));
+  document.getElementById('formTitle').textContent='Nueva lectura';
+  document.getElementById('saveBtn').innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Guardar lectura';
+  document.getElementById('editActions').style.display='none';
+}
+function saveReading(){
+  const date=document.getElementById('fDate').value;
+  const time=document.getElementById('fTime').value||'08:00';
+  const value=parseFloat(document.getElementById('fValue').value);
+  const note=document.getElementById('fNote').value.trim();
+  const monthStart=document.getElementById('fMonthStart').checked;
+  if(!date){ toast('Selecciona la fecha',true); return; }
+  if(isNaN(value)){ toast('Ingresa la lectura en kWh',true); return; }
+
+  let rs=getReadings();
+  // si se marca como inicio de mes, quitamos la marca de otras lecturas del mismo mes
+  if(monthStart){
+    const mk=monthKey(parseD(date));
+    rs=rs.map(r=>(r.id!==editingId && monthKey(parseD(r.date))===mk)?{...r,monthStart:false}:r);
+  }
+  if(editingId){
+    const i=rs.findIndex(r=>r.id===editingId);
+    if(i>=0) rs[i]={...rs[i],date,time,value,note,monthStart};
+    toast('Lectura actualizada');
+  } else {
+    const prev=rs.filter(r=>dt(r)<new Date(date+'T'+time)).sort((a,b)=>dt(b)-dt(a))[0];
+    rs.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,6),date,time,value,note,monthStart});
+    if(prev && value<prev.value) toast('Guardado · ⚠ menor que la lectura anterior',false);
+    else toast(monthStart?'Inicio de mes guardado 🏁':'Lectura guardada ✓');
+  }
+  setReadings(rs);
+  resetForm();
+  render();
+  showScreen('dashboard');
+}
+function editReading(id){
+  const r=getReadings().find(x=>x.id===id);
+  if(!r)return;
+  editingId=id;
+  document.getElementById('fDate').value=r.date;
+  document.getElementById('fTime').value=r.time;
+  document.getElementById('fValue').value=r.value;
+  document.getElementById('fNote').value=r.note||'';
+  setMonthStartCheck(!!r.monthStart);
+  document.getElementById('formTitle').textContent='Editar lectura';
+  document.getElementById('saveBtn').innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Actualizar lectura';
+  document.getElementById('editActions').style.display='flex';
+  showScreen('registro');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function cancelEdit(){ resetForm(); }
+function deleteReading(id){
+  if(!confirm('¿Eliminar esta lectura?'))return;
+  setReadings(getReadings().filter(r=>r.id!==id));
+  if(editingId===id)resetForm();
+  render();
+  toast('Lectura eliminada');
+}
+function saveLimit(){
+  const v=parseFloat(document.getElementById('fLimit').value);
+  const s=getSettings();
+  if(isNaN(v)||v<=0){ s.monthlyLimit=null; setSettings(s); render(); toast('Límite eliminado'); return; }
+  s.monthlyLimit=v; setSettings(s); render(); toast('Límite guardado: '+fmtNum(v,0)+' kWh/mes ✓');
+}
+
+/* ============================================================
+   NAVEGACIÓN
+============================================================ */
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.nav button[data-screen]').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));
+  window.scrollTo(0,0);
+}
+
+/* ============================================================
+   CONTEXTO COMPARTIDO DEL REPORTE (filtrable por mes)
+============================================================ */
+function reportScope(){ const el=document.getElementById('reportMonth'); return el&&el.value?el.value:'all'; }
+function reportContext(scope){
+  const allDm=dailyMap();
+  const inScope = d => scope==='all' || monthKey(parseD(d))===scope;
+  const dayKeys=Object.keys(allDm).filter(inScope).sort();
+  const dm={}; dayKeys.forEach(k=>dm[k]=allDm[k]);
+  const total=dayKeys.reduce((a,k)=>a+dm[k],0);
+  const segs=getSegments().filter(s=>s.valid && inScope(s.date));
+  const totalDays=segs.reduce((a,s)=>a+s.days,0);
+  let maxD=null,minD=null;
+  dayKeys.forEach(d=>{ if(maxD===null||dm[d]>dm[maxD])maxD=d; if(minD===null||dm[d]<dm[minD])minD=d; });
+  const noteByDate={};
+  getSegments().forEach(sg=>{ if(sg.valid && sg.note && !noteByDate[sg.date]) noteByDate[sg.date]=sg.note; });
+  const wk={},q={};
+  segs.forEach(s=>{ const a=isoWeekKey(parseD(s.date)); wk[a]=(wk[a]||0)+s.kwh; const b=quincenaKey(parseD(s.date)); q[b]=(q[b]||0)+s.kwh; });
+  const months = scope==='all' ? monthlyBreakdown() : monthlyBreakdown().filter(m=>m.key===scope);
+  const subtitle = scope==='all'
+    ? (dayKeys.length?('Período: '+fmtDateLong(dayKeys[0])+'  —  '+fmtDateLong(dayKeys[dayKeys.length-1])):'Sin datos')
+    : ('Mes de '+(months[0]?months[0].label:scope));
+  const scopeLabel = scope==='all' ? 'Completo' : (months[0]?months[0].label.replace(/\s+/g,'_'):scope);
+  return {scope,scopeLabel,dayKeys,dm,total,totalDays,avg:totalDays?total/totalDays:0,maxD,minD,noteByDate,wk,q,months,limit:getLimit(),subtitle};
+}
+
+/* ============================================================
+   REPORTE PDF
+============================================================ */
+function generatePDF(){
+  if(getReadings().length<2){ toast('Necesitas al menos 2 lecturas',true); return; }
+  const ctx=reportContext(reportScope());
+  if(!ctx.dayKeys.length){ toast('No hay consumo en el período elegido',true); return; }
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF('p','mm','a4');
+  const W=doc.internal.pageSize.getWidth();
+  const teal=[13,148,136], dark=[15,23,42], muted=[100,116,139];
+  const s=ctx, dm=ctx.dm, dayKeys=ctx.dayKeys;
+  const hoy=new Date();
+
+  // encabezado
+  doc.setFillColor(...teal); doc.rect(0,0,W,30,'F');
+  doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text('Reporte de Consumo Eléctrico',14,14);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.text(ctx.subtitle,14,22);
+  doc.setFontSize(8.5);
+  doc.text('Generado el '+hoy.getDate()+' de '+MESES_L[hoy.getMonth()]+' de '+hoy.getFullYear(), W-14, 22, {align:'right'});
+
+  // tarjetas resumen
+  let y=40;
+  const cards=[
+    ['Consumo total', fmtNum(s.total)+' kWh'],
+    ['Días medidos', String(s.totalDays)],
+    ['Promedio diario', fmtNum(s.avg)+' kWh'],
+  ];
+  const cw=(W-28-12)/3;
+  cards.forEach((c,i)=>{
+    const x=14+i*(cw+6);
+    doc.setFillColor(243,247,247); doc.roundedRect(x,y,cw,20,2,2,'F');
+    doc.setTextColor(...muted); doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.text(c[0],x+4,y+7);
+    doc.setTextColor(...dark); doc.setFontSize(13); doc.setFont('helvetica','bold');
+    doc.text(c[1],x+4,y+15);
+  });
+  y+=26;
+
+  // mayor / menor
+  if(s.maxD){
+    doc.setFillColor(254,242,242); doc.roundedRect(14,y,(W-28-6)/2,18,2,2,'F');
+    doc.setTextColor(...muted); doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.text('Día de MAYOR consumo',18,y+6);
+    doc.setTextColor(185,28,28); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text(fmtDateLong(s.maxD)+' · '+fmtNum(dm[s.maxD])+' kWh',18,y+13);
+    const x2=14+(W-28-6)/2+6;
+    doc.setFillColor(236,253,245); doc.roundedRect(x2,y,(W-28-6)/2,18,2,2,'F');
+    doc.setTextColor(...muted); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.text('Día de MENOR consumo',x2+4,y+6);
+    doc.setTextColor(5,150,105); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text(fmtDateLong(s.minD)+' · '+fmtNum(dm[s.minD])+' kWh',x2+4,y+13);
+    y+=24;
+  }
+
+  // estado del límite (cuando es un solo mes y hay límite)
+  if(s.limit && s.months.length===1){
+    const m=s.months[0]; const ls=limitState(m.consumo,s.limit);
+    const over=ls.state==='over';
+    doc.setFillColor(over?254:236,over?242:253,over?242:245); doc.roundedRect(14,y,W-28,16,2,2,'F');
+    doc.setTextColor(...muted); doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.text('Límite mensual: '+fmtNum(s.limit,0)+' kWh',18,y+6);
+    doc.setTextColor(...(over?[220,38,38]:[5,150,105])); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text(over?('LÍMITE SUPERADO por '+fmtNum(m.consumo-s.limit)+' kWh'):('Dentro del límite · sobran '+fmtNum(s.limit-m.consumo)+' kWh'),18,y+12.5);
+    y+=22;
+  }
+
+  // tabla consumo diario
+  const dayRows=dayKeys.map(k=>{
+    let tag=''; if(k===s.maxD)tag=' (máx)'; else if(k===s.minD)tag=' (mín)';
+    return [fmtDateLong(k), fmtNum(dm[k])+' kWh'+tag, s.noteByDate[k]||'—'];
+  });
+  doc.autoTable({
+    startY:y,
+    head:[['Fecha','Consumo','Observación']],
+    body:dayRows,
+    foot:[['TOTAL', fmtNum(s.total)+' kWh','']],
+    theme:'grid',
+    headStyles:{fillColor:teal,textColor:255,fontStyle:'bold',fontSize:9},
+    footStyles:{fillColor:[15,23,42],textColor:255,fontStyle:'bold'},
+    bodyStyles:{fontSize:8.5,textColor:dark},
+    columnStyles:{0:{cellWidth:42},1:{cellWidth:38},2:{cellWidth:'auto'}},
+    didParseCell:d=>{
+      if(d.section==='body'){
+        const k=dayKeys[d.row.index];
+        if(k===s.maxD && d.column.index===1){ d.cell.styles.textColor=[185,28,28]; d.cell.styles.fontStyle='bold'; }
+        if(k===s.minD && d.column.index===1){ d.cell.styles.textColor=[5,150,105]; d.cell.styles.fontStyle='bold'; }
+      }
+    },
+    margin:{left:14,right:14},
+    didDrawPage:()=>addFooter(doc)
+  });
+
+  // tabla mensual: inicio / fin / consumo (+ límite)
+  if(s.months.length){
+    const hasLimit=!!s.limit;
+    const head=['Mes','Lectura inicial','Lectura final','Consumo']; if(hasLimit)head.push('Límite');
+    const body=s.months.map(m=>{
+      const row=[m.label, fmtNum(m.inicioVal)+' kWh', fmtNum(m.finVal)+' kWh', fmtNum(m.consumo)+' kWh'];
+      if(hasLimit){ const over=m.consumo>s.limit; row.push(over?('Superado +'+fmtNum(m.consumo-s.limit)):('Cumplido −'+fmtNum(s.limit-m.consumo))); }
+      return row;
+    });
+    doc.autoTable({
+      startY:doc.lastAutoTable.finalY+8,
+      head:[head],
+      body:body,
+      theme:'grid',
+      headStyles:{fillColor:teal,textColor:255,fontStyle:'bold',fontSize:9},
+      bodyStyles:{fontSize:8.8,textColor:dark},
+      columnStyles:hasLimit?{4:{fontStyle:'bold'}}:{},
+      didParseCell:d=>{
+        if(hasLimit && d.section==='body' && d.column.index===4){
+          const m=s.months[d.row.index];
+          d.cell.styles.textColor = m.consumo>s.limit ? [220,38,38] : [5,150,105];
+        }
+      },
+      margin:{left:14,right:14},
+      didDrawPage:()=>addFooter(doc)
+    });
+    // nota explicativa
+    doc.setFontSize(7.5); doc.setTextColor(...muted); doc.setFont('helvetica','italic');
+    doc.text('Consumo del mes = lectura final − lectura inicial.', 14, doc.lastAutoTable.finalY+4);
+  }
+
+  // tablas por período
+  const periodTable=(title,obj,fmt)=>{
+    const keys=Object.keys(obj).sort();
+    if(!keys.length)return;
+    const total=keys.reduce((a,k)=>a+obj[k],0);
+    doc.autoTable({
+      startY:doc.lastAutoTable.finalY+8,
+      head:[[title,'Consumo']],
+      body:keys.map(k=>[fmt(k),fmtNum(obj[k])+' kWh']),
+      foot:[['TOTAL',fmtNum(total)+' kWh']],
+      theme:'grid',
+      headStyles:{fillColor:teal,textColor:255,fontStyle:'bold',fontSize:9},
+      footStyles:{fillColor:[15,23,42],textColor:255,fontStyle:'bold'},
+      bodyStyles:{fontSize:9,textColor:dark},
+      columnStyles:{1:{halign:'right',cellWidth:45}},
+      margin:{left:14,right:14},
+      didDrawPage:()=>addFooter(doc)
+    });
+  };
+  periodTable('Consumo por quincena',s.q,k=>{const[y,m,q]=k.split('-');return q.replace('Q','')+'ª quincena de '+MESES_L[+m]+' '+y;});
+  periodTable('Consumo por semana',s.wk,k=>'Semana '+k.split('W')[1]+' de '+k.split('-')[0]);
+
+  addFooter(doc);
+  doc.save('Reporte_Consumo_Luz_'+ctx.scopeLabel+'_'+hoy.toISOString().slice(0,10)+'.pdf');
+  toast('Reporte PDF generado ✓');
+}
+function addFooter(doc){
+  const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight();
+  const n=doc.internal.getNumberOfPages();
+  doc.setFontSize(8); doc.setTextColor(150);
+  doc.text('Consumo de Luz · Reporte generado automáticamente', 14, H-8);
+  doc.text('Página '+doc.internal.getCurrentPageInfo().pageNumber+' de '+n, W-14, H-8, {align:'right'});
+}
+
+/* ============================================================
+   REPORTE WORD (.docx)
+============================================================ */
+async function generateWord(){
+  if(!window.docx){ toast('La librería de Word no cargó (revisa tu conexión)',true); return; }
+  if(getReadings().length<2){ toast('Necesitas al menos 2 lecturas',true); return; }
+  const ctx=reportContext(reportScope());
+  if(!ctx.dayKeys.length){ toast('No hay consumo en el período elegido',true); return; }
+  const D=window.docx;
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, ShadingType } = D;
+  const TEAL='0D9488', DARK='0F172A', GREEN='059669', RED='DC2626', GREY='64748B';
+  const hoy=new Date();
+
+  const cell=(text,o={})=>new TableCell({
+    shading:o.fill?{type:ShadingType.CLEAR,color:'auto',fill:o.fill}:undefined,
+    margins:{top:50,bottom:50,left:110,right:110},
+    children:[new Paragraph({alignment:o.align||AlignmentType.LEFT,
+      children:[new TextRun({text:String(text),bold:!!o.bold,color:o.color||DARK,size:o.size||18})]})]
+  });
+  const table=(headers,rows,footer)=>{
+    const trs=[new TableRow({tableHeader:true,children:headers.map(h=>cell(h.t,{bold:true,color:'FFFFFF',fill:TEAL,align:h.a}))})];
+    rows.forEach(r=>trs.push(new TableRow({children:r.map(c=>cell(c.t,{align:c.a,bold:c.bold,color:c.color}))})));
+    if(footer)trs.push(new TableRow({children:footer.map(c=>cell(c.t,{bold:true,color:'FFFFFF',fill:DARK,align:c.a}))}));
+    return new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:trs});
+  };
+  const h=(t,sz,col)=>new Paragraph({spacing:{before:240,after:100},children:[new TextRun({text:t,bold:true,size:sz||26,color:col||TEAL})]});
+  const p=(t,o={})=>new Paragraph({spacing:{after:o.after||60},alignment:o.align,children:[new TextRun({text:t,size:o.size||20,color:o.color||DARK,bold:!!o.bold,italics:!!o.italics})]});
+
+  const kids=[];
+  kids.push(new Paragraph({spacing:{after:40},children:[new TextRun({text:'Reporte de Consumo Eléctrico',bold:true,size:40,color:TEAL})]}));
+  kids.push(p(ctx.subtitle,{color:GREY,size:22,after:20}));
+  kids.push(p('Generado el '+hoy.getDate()+' de '+MESES_L[hoy.getMonth()]+' de '+hoy.getFullYear(),{color:GREY,size:18,after:160}));
+
+  // resumen
+  kids.push(table(
+    [{t:'Consumo total',a:AlignmentType.LEFT},{t:'Días medidos',a:AlignmentType.CENTER},{t:'Promedio diario',a:AlignmentType.CENTER}],
+    [[{t:fmtNum(ctx.total)+' kWh',bold:true},{t:String(ctx.totalDays),a:AlignmentType.CENTER},{t:fmtNum(ctx.avg)+' kWh',a:AlignmentType.CENTER}]]
+  ));
+  kids.push(p('',{after:80}));
+  if(ctx.maxD){
+    kids.push(p('• Día de MAYOR consumo: '+fmtDateLong(ctx.maxD)+' — '+fmtNum(ctx.dm[ctx.maxD])+' kWh',{color:RED,bold:true,after:30}));
+    kids.push(p('• Día de MENOR consumo: '+fmtDateLong(ctx.minD)+' — '+fmtNum(ctx.dm[ctx.minD])+' kWh',{color:GREEN,bold:true,after:60}));
+  }
+  if(ctx.limit && ctx.months.length===1){
+    const m=ctx.months[0]; const over=m.consumo>ctx.limit;
+    kids.push(p('Límite mensual: '+fmtNum(ctx.limit,0)+' kWh  →  '+(over?('SUPERADO por '+fmtNum(m.consumo-ctx.limit)+' kWh'):('Cumplido, sobran '+fmtNum(ctx.limit-m.consumo)+' kWh')),{bold:true,color:over?RED:GREEN,after:60}));
+  }
+
+  // consumo diario
+  kids.push(h('Consumo diario',26));
+  const dailyRows=ctx.dayKeys.map(k=>{
+    const isMax=k===ctx.maxD,isMin=k===ctx.minD;
+    return [
+      {t:fmtDateLong(k)},
+      {t:fmtNum(ctx.dm[k])+' kWh'+(isMax?' (máx)':isMin?' (mín)':''),a:AlignmentType.RIGHT,bold:isMax||isMin,color:isMax?RED:isMin?GREEN:DARK},
+      {t:ctx.noteByDate[k]||'—'}
+    ];
+  });
+  kids.push(table(
+    [{t:'Fecha',a:AlignmentType.LEFT},{t:'Consumo',a:AlignmentType.RIGHT},{t:'Observación',a:AlignmentType.LEFT}],
+    dailyRows,
+    [{t:'TOTAL'},{t:fmtNum(ctx.total)+' kWh',a:AlignmentType.RIGHT},{t:''}]
+  ));
+
+  // resumen mensual inicio/fin
+  if(ctx.months.length){
+    kids.push(h('Resumen mensual (inicio → fin)',26));
+    const hasLimit=!!ctx.limit;
+    const head=[{t:'Mes',a:AlignmentType.LEFT},{t:'Lectura inicial',a:AlignmentType.RIGHT},{t:'Lectura final',a:AlignmentType.RIGHT},{t:'Consumo',a:AlignmentType.RIGHT}];
+    if(hasLimit)head.push({t:'Límite',a:AlignmentType.CENTER});
+    const rows=ctx.months.map(m=>{
+      const r=[{t:m.label,bold:true},{t:fmtNum(m.inicioVal)+' kWh',a:AlignmentType.RIGHT},{t:fmtNum(m.finVal)+' kWh',a:AlignmentType.RIGHT},{t:fmtNum(m.consumo)+' kWh',a:AlignmentType.RIGHT,bold:true}];
+      if(hasLimit){ const over=m.consumo>ctx.limit; r.push({t:over?('Superado +'+fmtNum(m.consumo-ctx.limit)):('Cumplido −'+fmtNum(ctx.limit-m.consumo)),a:AlignmentType.CENTER,bold:true,color:over?RED:GREEN}); }
+      return r;
+    });
+    kids.push(table(head,rows));
+    kids.push(p('Consumo del mes = lectura final − lectura inicial.',{italics:true,color:GREY,size:16,after:60}));
+  }
+
+  // quincena y semana
+  const ptab=(title,obj,fmt)=>{
+    const keys=Object.keys(obj).sort(); if(!keys.length)return;
+    const total=keys.reduce((a,k)=>a+obj[k],0);
+    kids.push(h(title,24));
+    kids.push(table(
+      [{t:'Período',a:AlignmentType.LEFT},{t:'Consumo',a:AlignmentType.RIGHT}],
+      keys.map(k=>[{t:fmt(k)},{t:fmtNum(obj[k])+' kWh',a:AlignmentType.RIGHT}]),
+      [{t:'TOTAL'},{t:fmtNum(total)+' kWh',a:AlignmentType.RIGHT}]
+    ));
+  };
+  ptab('Consumo por quincena',ctx.q,k=>{const[y,m,q]=k.split('-');return q.replace('Q','')+'ª quincena de '+MESES_L[+m]+' '+y;});
+  ptab('Consumo por semana',ctx.wk,k=>'Semana '+k.split('W')[1]+' de '+k.split('-')[0]);
+
+  kids.push(p('Consumo de Luz · Reporte generado automáticamente',{italics:true,color:GREY,size:16,align:AlignmentType.CENTER}));
+
+  const docx=new Document({sections:[{properties:{page:{margin:{top:720,bottom:720,left:720,right:720}}},children:kids}]});
+  try{
+    const blob=await Packer.toBlob(docx);
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='Reporte_Consumo_Luz_'+ctx.scopeLabel+'_'+hoy.toISOString().slice(0,10)+'.docx';
+    a.click();
+    toast('Reporte Word generado ✓');
+  }catch(e){ toast('Error al generar Word',true); console.error(e); }
+}
+
+/* ============================================================
+   RESPALDO
+============================================================ */
+function exportData(){
+  const data=JSON.stringify(getReadings(),null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='respaldo_consumo_luz_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  toast('Respaldo exportado ✓');
+}
+function importData(e){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const arr=JSON.parse(reader.result);
+      if(!Array.isArray(arr))throw 0;
+      setReadings(arr); render(); toast('Datos importados ✓');
+    }catch(err){ toast('Archivo no válido',true); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+function clearAll(){
+  if(!confirm('¿Borrar TODAS las lecturas? Esta acción no se puede deshacer.'))return;
+  localStorage.removeItem(KEY); render(); toast('Datos borrados');
+}
+
+/* ---------- util ---------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let toastT;
+function toast(msg,err){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show'+(err?' err':'');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',2400);
+}
+
+/* ---------- init ---------- */
+document.getElementById('chartSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  document.querySelectorAll('#chartSeg button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); chartPeriod=b.dataset.p; renderChart();
+});
+(function init(){
+  const t=new Date();
+  document.getElementById('todayLabel').textContent=t.getDate()+' '+MESES[t.getMonth()]+' '+t.getFullYear();
+  resetForm();
+  render();
+})();
+</script>
+</body>
+</html>
