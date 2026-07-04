@@ -79,6 +79,8 @@
   .month-pill{background:rgba(255,255,255,.20);border-radius:20px;padding:5px 13px;font-size:12.5px;font-weight:700;backdrop-filter:blur(4px);white-space:nowrap;}
   .hero .big{font-size:46px;font-weight:800;letter-spacing:-1.5px;line-height:1.05;margin-top:2px;}
   .hero .big small{font-size:18px;font-weight:600;opacity:.85;margin-left:4px;}
+  .hero-day{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:rgba(255,255,255,.18);border-radius:20px;padding:6px 13px;font-size:12.5px;font-weight:600;position:relative;z-index:1;backdrop-filter:blur(4px);}
+  .hero-day b{font-weight:800;}
   .hero .row{display:flex;gap:7px;margin-top:16px;position:relative;z-index:1;}
   .hero .chip{background:rgba(255,255,255,.16);border-radius:12px;padding:9px 10px;flex:1;backdrop-filter:blur(4px);min-width:0;}
   .hero .chip .t{font-size:11px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -196,10 +198,14 @@
   .micro{font-size:11px;color:var(--muted);text-align:center;margin-top:18px;line-height:1.5;}
   a.link{color:var(--primary-d);font-weight:600;text-decoration:none;}
 
-  /* checkbox inicio de mes */
+  /* checks de apertura / cierre de período */
   .check{display:flex;align-items:flex-start;gap:11px;padding:13px 14px;border:1.5px solid var(--line);border-radius:13px;cursor:pointer;transition:.15s;background:#fff;}
   .check.on{border-color:var(--primary);background:#f0fdfa;}
+  .check.open.on{border-color:#10b981;background:#ecfdf5;}
+  .check.close.on{border-color:#ef4444;background:#fef2f2;}
   .check input{width:auto;margin:0;flex-shrink:0;width:20px;height:20px;accent-color:var(--primary);margin-top:1px;}
+  .check.open input{accent-color:#10b981;}
+  .check.close input{accent-color:#ef4444;}
   .check>span{display:block;}
   .check .ct{display:block;font-size:13.5px;font-weight:600;color:#334155;}
   .check .cd{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:3px;line-height:1.4;}
@@ -228,7 +234,9 @@
   select{width:100%;border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:13px 14px;font-size:15px;font-family:inherit;color:var(--text);-webkit-appearance:none;appearance:none;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:40px;}
   select:focus{outline:none;border-color:var(--primary);}
-  .ms-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:#ccfbf1;color:var(--primary-d);margin-left:6px;}
+  .ms-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:#ccfbf1;color:var(--primary-d);margin-left:6px;white-space:nowrap;}
+  .ms-badge.open{background:#d1fae5;color:#059669;}
+  .ms-badge.close{background:#fee2e2;color:#dc2626;}
   .rcons{display:inline-block;font-size:11.5px;font-weight:700;color:var(--primary-d);background:#f0fdfa;padding:2px 9px;border-radius:8px;margin-top:5px;}
   .rcons.pending{color:var(--muted);background:#f1f5f9;}
   .l-meter{font-size:12px;color:#475569;margin-top:2px;}
@@ -248,10 +256,11 @@
   <section id="screen-dashboard" class="screen active">
     <div class="hero">
       <div class="hero-top">
-        <div class="label">Consumo este mes</div>
+        <div class="label">Consumo del ciclo</div>
         <div class="month-pill" id="heroMonthName">—</div>
       </div>
       <div class="big" id="heroMonth">0<small>kWh</small></div>
+      <div class="hero-day" id="heroDay"></div>
       <div class="row">
         <div class="chip"><div class="t">Inicio</div><div class="v" id="heroStart">—</div></div>
         <div class="chip"><div class="t">Actual</div><div class="v" id="heroReading">—</div></div>
@@ -276,7 +285,7 @@
         <div class="d" id="stQuinD">—</div>
       </div>
       <div class="stat">
-        <div class="t"><span class="dot" style="background:#8b5cf6"></span>Este mes</div>
+        <div class="t"><span class="dot" style="background:#8b5cf6"></span>Este ciclo</div>
         <div class="v" id="stMonth">—<small>kWh</small></div>
         <div class="d" id="stMonthD">—</div>
       </div>
@@ -331,12 +340,20 @@
         <label>Observación del día <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
         <textarea id="fNote" placeholder="Ej. día caluroso, usé el aire acondicionado, etc."></textarea>
       </div>
-      <div class="field">
-        <label class="check" id="msCheck" onclick="toggleMonthStart(event)">
-          <input type="checkbox" id="fMonthStart" />
-          <span><span class="ct">🏁 Lectura inicial del mes</span><span class="cd">Marca esto en tu primera lectura del mes para fijar desde cuántos kWh empiezas a contar. Aparecerá en el reporte como "inicio de mes".</span></span>
+
+      <div class="field" style="margin-bottom:10px">
+        <label class="check open" id="openCheck" onclick="toggleMark(event,'open')">
+          <input type="checkbox" id="fOpen" />
+          <span><span class="ct">🟢 Aquí inicia el conteo</span><span class="cd">Marca el comienzo de un nuevo período de facturación a partir de esta lectura.</span></span>
         </label>
       </div>
+      <div class="field">
+        <label class="check close" id="closeCheck" onclick="toggleMark(event,'close')">
+          <input type="checkbox" id="fClose" />
+          <span><span class="ct">🔴 Aquí cierra el período</span><span class="cd">Cierra el período actual con esta lectura. El conteo se reinicia y arranca uno nuevo desde este valor.</span></span>
+        </label>
+      </div>
+
       <button class="btn btn-primary" id="saveBtn" onclick="saveReading()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
         Guardar lectura
@@ -471,10 +488,10 @@ let chartPeriod='dia';
 
 /* ---------- almacenamiento ---------- */
 function getReadings(){ try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return [];} }
-function setReadings(r){ localStorage.setItem(KEY,JSON.stringify(r)); }
+function setReadings(r){ localStorage.setItem(KEY,JSON.stringify(r)); invalidatePeriods(); }
 const SKEY='medidorLuz.settings.v1';
 function getSettings(){ try{return JSON.parse(localStorage.getItem(SKEY))||{};}catch(e){return {};} }
-function setSettings(s){ localStorage.setItem(SKEY,JSON.stringify(s)); }
+function setSettings(s){ localStorage.setItem(SKEY,JSON.stringify(s)); invalidatePeriods(); }
 function getLimit(){ const v=getSettings().monthlyLimit; return (typeof v==='number'&&v>0)?v:null; }
 
 /* ---------- helpers de fecha ---------- */
@@ -493,6 +510,91 @@ function isoWeekKey(d){
 }
 function quincenaKey(d){ return d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0')+'-Q'+(d.getDate()<=15?1:2); }
 function monthKey(d){ return d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0'); }
+
+/* ---------- PERÍODOS de facturación ----------
+   Los períodos los delimita el usuario marcando lecturas al registrarlas:
+   • open  = a partir de ESTA lectura inicia un nuevo período (apertura).
+   • close = con ESTA lectura cierra el período; el siguiente arranca al día
+             siguiente y el conteo se reinicia desde el valor de esta lectura.
+   La primera lectura siempre inicia el primer período.
+   La clave de un período es su fecha de apertura ('YYYY-MM-DD'). */
+function fmtISO(x){ return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+let _psCache=null;
+function invalidatePeriods(){ _psCache=null; }
+function periodStarts(){
+  if(_psCache) return _psCache;
+  const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
+  const set=new Set();
+  rs.forEach((r,i)=>{
+    if(i===0 || r.open) set.add(r.date);                                  // apertura
+    if(r.close){ const d=parseD(r.date); d.setDate(d.getDate()+1); set.add(fmtISO(d)); } // cierre → nuevo período al día siguiente
+  });
+  _psCache=[...set].sort();
+  return _psCache;
+}
+function cycleKey(d){
+  const starts=periodStarts();
+  if(!starts.length) return monthKey(d);
+  const ds=fmtISO(d);
+  let key=starts[0];
+  for(const st of starts){ if(st<=ds) key=st; else break; }
+  return key;
+}
+function cycleBounds(key){
+  const starts=periodStarts();
+  const start=parseD(key);
+  const i=starts.indexOf(key);
+  if(i>=0 && i+1<starts.length){ const end=parseD(starts[i+1]); end.setDate(end.getDate()-1); return {start,end,open:false}; }
+  let end=new Date(); end.setHours(0,0,0,0); if(end<start) end=new Date(start);
+  return {start,end,open:true};
+}
+function cycleLabel(key){
+  const {start,end,open}=cycleBounds(key);
+  if(open) return 'Desde '+start.getDate()+' '+MESES[start.getMonth()]+' '+start.getFullYear();
+  return start.getDate()+' '+MESES[start.getMonth()]+' – '+end.getDate()+' '+MESES[end.getMonth()]+' '+end.getFullYear();
+}
+function cycleRange(key){
+  const {start,end,open}=cycleBounds(key);
+  if(open) return 'desde '+start.getDate()+' '+MESES[start.getMonth()];
+  return start.getDate()+' '+MESES[start.getMonth()]+'–'+end.getDate()+' '+MESES[end.getMonth()];
+}
+function cycleShort(key){
+  const {start,end,open}=cycleBounds(key);
+  return open ? (start.getDate()+' '+MESES[start.getMonth()]) : (end.getDate()+' '+MESES[end.getMonth()]);
+}
+/* longitud estimada del período abierto (para proyección): último período cerrado, o 30 */
+function estPeriodLen(){
+  const b=monthlyBreakdown();
+  for(let i=b.length-1;i>=0;i--){
+    const cb=cycleBounds(b[i].key);
+    if(!cb.open) return Math.max(1,Math.round((cb.end-cb.start)/864e5)+1);
+  }
+  return 30;
+}
+/* días transcurridos del período que contiene la fecha */
+function cycleDays(key){
+  const {start,end,open}=cycleBounds(key);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const ref=today<start?start:today;
+  if(open){
+    const elapsed=Math.max(1,Math.round((ref-start)/864e5)+1);
+    return {len:Math.max(elapsed,estPeriodLen()),elapsed,start,end,open};
+  }
+  const len=Math.max(1,Math.round((end-start)/864e5)+1);
+  return {len,elapsed:len,start,end,open};
+}
+/* período actual (aunque aún no tenga lecturas, p.ej. tras un cierre) */
+function currentPeriod(){
+  const key=cycleKey(new Date());
+  let info=monthInfo(key);
+  if(!info){
+    const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
+    const last=rs[rs.length-1];
+    info={key,label:cycleLabel(key),inicioVal:last?last.value:0,inicioDate:last?last.date:key,
+      finVal:last?last.value:0,finDate:last?last.date:key,consumo:0,isCurrent:true,single:true};
+  }
+  return info;
+}
 
 /* ---------- núcleo: segmentos de consumo ---------- */
 /* Para cada par de lecturas consecutivas calcula el consumo (delta).
@@ -539,28 +641,26 @@ function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
 function monthlyBreakdown(){
   const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
   if(!rs.length)return [];
-  const months=[];
-  rs.forEach(r=>{ const mk=monthKey(parseD(r.date)); if(!months.includes(mk))months.push(mk); });
-  // lectura inicial de cada mes (marcada, arrastre del mes previo, o primera del mes)
+  const keys=[];
+  rs.forEach(r=>{ const k=cycleKey(parseD(r.date)); if(!keys.includes(k))keys.push(k); });
+  // lectura inicial de cada ciclo = arrastre del ciclo previo, o la primera del ciclo
   const iniOf={};
-  months.forEach(mk=>{
-    const inMonth=rs.filter(r=>monthKey(parseD(r.date))===mk);
-    let iniR=inMonth.find(r=>r.monthStart);
-    const anchored=!!iniR;
-    if(!iniR){ const fi=rs.indexOf(inMonth[0]); iniR=fi>0?rs[fi-1]:inMonth[0]; }
-    iniOf[mk]={iniR,anchored};
+  keys.forEach(k=>{
+    const inCycle=rs.filter(r=>cycleKey(parseD(r.date))===k);
+    const fi=rs.indexOf(inCycle[0]);
+    iniOf[k]={iniR: fi>0 ? rs[fi-1] : inCycle[0]};
   });
   const lastReading=rs[rs.length-1];
-  // meses contiguos: el fin de un mes = el inicio del siguiente (como en facturación)
-  return months.map((mk,i)=>{
-    const {iniR,anchored}=iniOf[mk];
-    const finR = months[i+1] ? iniOf[months[i+1]].iniR : lastReading;
-    const [y,m]=mk.split('-').map(Number);
+  const nowKey=cycleKey(new Date());
+  // ciclos contiguos: el cierre de un ciclo = el inicio del siguiente (como en facturación)
+  return keys.map((k,i)=>{
+    const {iniR}=iniOf[k];
+    const finR = keys[i+1] ? iniOf[keys[i+1]].iniR : lastReading;
     return {
-      key:mk,year:y,month:m,label:MESES_L[m]+' '+y,
+      key:k, label:cycleLabel(k), short:cycleShort(k),
       inicioVal:iniR.value,inicioDate:iniR.date,finVal:finR.value,finDate:finR.date,
       consumo:Math.max(0,+(finR.value-iniR.value).toFixed(3)),
-      anchored, single:(iniR===finR)
+      isCurrent:(k===nowKey), single:(iniR===finR)
     };
   });
 }
@@ -576,6 +676,7 @@ function limitState(consumo,limit){
    RENDER
 ============================================================ */
 function render(){
+  invalidatePeriods();
   renderDashboard();
   renderLimit();
   renderReadings();
@@ -590,12 +691,18 @@ function renderDashboard(){
   const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
   const now=new Date();
 
-  // este mes (lectura final − lectura inicial del mes)
-  const curInfo=monthInfo(monthKey(now));
-  const monthSum=curInfo?curInfo.consumo:0;
+  // período actual (consumo continuo, se reinicia solo cuando marcas un cierre)
+  const curInfo=currentPeriod();
+  const curKey=curInfo.key;
+  const monthSum=curInfo.consumo;
   document.getElementById('heroMonth').innerHTML=fmtNum(monthSum)+'<small>kWh</small>';
-  document.getElementById('heroMonthName').textContent=MESES_L[now.getMonth()]+' '+now.getFullYear();
-  document.getElementById('heroStart').innerHTML=curInfo?fmtNum(curInfo.inicioVal,0)+'<small> kWh</small>':'—';
+  document.getElementById('heroMonthName').textContent=cycleRange(curKey);
+  document.getElementById('heroStart').innerHTML=rs.length?fmtNum(curInfo.inicioVal,0)+'<small> kWh</small>':'—';
+  // contador de días del período (en qué día vas)
+  const cdInfo=cycleDays(curKey);
+  document.getElementById('heroDay').innerHTML= rs.length
+    ? '📅 <b>Día '+cdInfo.elapsed+'</b> · llevas <b>'+cdInfo.elapsed+'</b> días en conteo'
+    : '📅 Aún sin lecturas';
   document.getElementById('heroAvg').innerHTML=s.avg?fmtNum(s.avg)+'<small> kWh</small>':'—';
   const lastR=rs[rs.length-1];
   document.getElementById('heroReading').innerHTML=lastR?fmtNum(lastR.value,0)+'<small> kWh</small>':'—';
@@ -616,7 +723,7 @@ function renderDashboard(){
   document.getElementById('stQuinD').textContent=(now.getDate()<=15?'1ª':'2ª')+' quincena';
 
   document.getElementById('stMonth').innerHTML=fmtNum(monthSum)+'<small>kWh</small>';
-  document.getElementById('stMonthD').textContent=curInfo?('desde '+fmtNum(curInfo.inicioVal,0)+' kWh'):MESES_L[now.getMonth()];
+  document.getElementById('stMonthD').textContent=rs.length?('desde '+fmtNum(curInfo.inicioVal,0)+' kWh'):cycleRange(curKey);
 
   // insights
   const ins=document.getElementById('insights');
@@ -634,31 +741,30 @@ function renderDashboard(){
 function renderLimit(){
   const el=document.getElementById('limitCard');
   const limit=getLimit();
-  const now=new Date();
-  const info=monthInfo(monthKey(now));
-  const consumo=info?info.consumo:0;
-  const mesNom=MESES_L[now.getMonth()];
+  const info=currentPeriod();
+  const key=info.key;
+  const consumo=info.consumo;
   if(!limit){
-    el.innerHTML='<div class="lh"><div class="lt">🎯 Límite mensual</div></div>'+
+    el.innerHTML='<div class="lh"><div class="lt">🎯 Límite del ciclo</div></div>'+
       '<div class="limit-empty">Aún no defines un límite de consumo.<br><span class="link" style="cursor:pointer" onclick="showScreen(\'reporte\')">Configúralo en la pestaña Reporte ›</span></div>';
     return;
   }
   const ls=limitState(consumo,limit);
-  const dim=daysInMonth(now.getFullYear(),now.getMonth());
-  const dayN=now.getDate();
-  const projection=dayN>0?consumo/dayN*dim:0;
+  const cd=cycleDays(key);
+  const cycleLen=cd.len, elapsed=cd.elapsed;
+  const projection=consumo/elapsed*cycleLen;
   const col=ls.state==='over'?'#dc2626':ls.state==='warn'?'#b45309':'#0f766e';
   const stTxt=ls.state==='over'?'LÍMITE SUPERADO':ls.state==='warn'?'CERCA DEL LÍMITE':'DENTRO DEL LÍMITE';
   const remPos=ls.remaining>=0;
   el.innerHTML=
-    '<div class="lh"><div class="lt">🎯 Límite de '+mesNom+'</div><div class="lst '+ls.state+'">'+stTxt+'</div></div>'+
+    '<div class="lh"><div class="lt">🎯 Límite del ciclo</div><div class="lst '+ls.state+'">'+stTxt+'</div></div>'+
     '<div class="limit-nums"><span class="cur" style="color:'+col+'">'+fmtNum(consumo)+'</span><span class="of">de '+fmtNum(limit,0)+' kWh</span></div>'+
     '<div class="bar"><div class="fill '+ls.state+'" style="width:'+Math.min(100,ls.pct)+'%"></div></div>'+
     '<div class="limit-foot">'+
       '<div class="lf"><div class="t">'+(remPos?'Te falta para el límite':'Superaste el límite por')+'</div><div class="v" style="color:'+(remPos?'#0f766e':'#dc2626')+'">'+fmtNum(Math.abs(ls.remaining))+' kWh</div></div>'+
-      '<div class="lf"><div class="t">Proyección fin de mes</div><div class="v" style="color:'+(projection>limit?'#dc2626':'#0f766e')+'">'+fmtNum(projection)+' kWh</div></div>'+
+      '<div class="lf"><div class="t">Proyección fin de ciclo</div><div class="v" style="color:'+(projection>limit?'#dc2626':'#0f766e')+'">'+fmtNum(projection)+' kWh</div></div>'+
     '</div>'+
-    '<div style="font-size:11.5px;color:var(--muted);margin-top:11px;text-align:center;line-height:1.4">Al día '+dayN+' de '+mesNom+' llevas '+fmtNum(consumo)+' kWh'+
+    '<div style="font-size:11.5px;color:var(--muted);margin-top:11px;text-align:center;line-height:1.4">Día '+elapsed+' de '+cycleLen+' del ciclo · llevas '+fmtNum(consumo)+' kWh'+
       (ls.state==='over'?' · ⚠ ya pasaste tu límite':projection>limit?' · ⚠ a este ritmo lo superarás':' · ✓ vas dentro del límite')+'</div>';
 }
 
@@ -667,7 +773,7 @@ function renderReportMonths(){
   if(!sel)return;
   const prev=sel.value;
   const months=monthlyBreakdown().slice().reverse();
-  let html='<option value="all">Todos los meses (reporte completo)</option>';
+  let html='<option value="all">Todos los ciclos (reporte completo)</option>';
   months.forEach(m=>{ html+='<option value="'+m.key+'">'+m.label+'</option>'; });
   sel.innerHTML=html;
   if(prev && [...sel.options].some(o=>o.value===prev)) sel.value=prev;
@@ -688,7 +794,7 @@ function chartData(){
     return {labels:keys.map(k=>{const[y,m,q]=k.split('-');return MESES[+m]+' '+q;}),values:keys.map(k=>o[k]),unit:'quincena'};
   }
   const mb=monthlyBreakdown().slice(-12);
-  return {labels:mb.map(m=>MESES[m.month]+' '+String(m.year).slice(2)),values:mb.map(m=>m.consumo),unit:'mes'};
+  return {labels:mb.map(m=>m.short),values:mb.map(m=>m.consumo),unit:'ciclo'};
 }
 function renderChart(){
   const d=chartData();
@@ -734,9 +840,11 @@ function renderReadings(){
     if(r.id===lastId) consHtml='<span class="rcons pending">lectura más reciente</span>';
     else if(cons==null) consHtml='<span class="rcons pending">— lectura menor</span>';
     else consHtml='<span class="rcons">▸ '+fmtNum(cons)+' kWh consumidos</span>';
+    const mark = r.open?'<span class="ms-badge open">🟢 INICIA CONTEO</span>':r.close?'<span class="ms-badge close">🔴 CIERRE</span>':'';
+    const icoStyle = r.open?' style="background:#ecfdf5;color:#059669"':r.close?' style="background:#fef2f2;color:#dc2626"':'';
     return '<div class="ritem">'+
-      '<div class="ico"'+(r.monthStart?' style="background:#ccfbf1;color:#0f766e"':'')+'><span class="d">'+d.getDate()+'</span><span class="m">'+MESES[d.getMonth()]+'</span></div>'+
-      '<div class="mid"><div class="l1">'+fmtNum(r.value)+' kWh'+(r.monthStart?'<span class="ms-badge">🏁 INICIO DE MES</span>':'')+'</div>'+
+      '<div class="ico"'+icoStyle+'><span class="d">'+d.getDate()+'</span><span class="m">'+MESES[d.getMonth()]+'</span></div>'+
+      '<div class="mid"><div class="l1">'+fmtNum(r.value)+' kWh'+mark+'</div>'+
       '<div class="l2">'+r.time+(r.note?' · '+escapeHtml(r.note):'')+'</div>'+
       consHtml+'</div>'+
       '<button class="iconbtn" onclick="editReading(\''+r.id+'\')" aria-label="Editar">'+
@@ -787,25 +895,25 @@ function renderHistory(){
 }
 
 function renderPeriods(){
-  const wk=sumByKey(isoWeekKey), q=sumByKey(quincenaKey), mo=sumByKey(monthKey);
+  const wk=sumByKey(isoWeekKey), q=sumByKey(quincenaKey);
   const sec=(title,obj,fmt)=>{
     const keys=Object.keys(obj).sort((a,b)=>b.localeCompare(a));
     if(!keys.length)return '';
     return '<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">'+title+'</div>'+
       keys.slice(0,6).map(k=>'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px"><span>'+fmt(k)+'</span><b>'+fmtNum(obj[k])+' kWh</b></div>').join('')+'</div>';
   };
-  // sección mensual con inicio / fin
+  // sección por ciclo con inicio / cierre
   const mb=monthlyBreakdown().slice().reverse();
   const limit=getLimit();
   let monthSec='';
   if(mb.length){
-    monthSec='<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Por mes (inicio → fin)</div>'+
+    monthSec='<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Por ciclo (inicio → cierre)</div>'+
       mb.slice(0,8).map(m=>{
         const ls=limitState(m.consumo,limit);
         const tag=ls?(' <span style="font-size:10px;font-weight:700;color:'+(ls.state==='over'?'#dc2626':ls.state==='warn'?'#b45309':'#059669')+'">'+(ls.state==='over'?'▲ +'+fmtNum(m.consumo-limit):'✓ -'+fmtNum(limit-m.consumo))+'</span>'):'';
         return '<div style="padding:9px 0;border-bottom:1px solid var(--line)">'+
-          '<div style="display:flex;justify-content:space-between;font-size:13.5px"><b>'+m.label+'</b><b>'+fmtNum(m.consumo)+' kWh'+tag+'</b></div>'+
-          '<div style="font-size:11.5px;color:var(--muted);margin-top:2px">Inicio '+fmtNum(m.inicioVal,0)+' kWh → Fin '+fmtNum(m.finVal,0)+' kWh'+(m.anchored?' · 🏁 anclado':'')+'</div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:13.5px;gap:8px"><b>'+m.label+(m.isCurrent?' <span style="color:var(--primary-d);font-size:10px">• en curso</span>':'')+'</b><b style="white-space:nowrap">'+fmtNum(m.consumo)+' kWh'+tag+'</b></div>'+
+          '<div style="font-size:11.5px;color:var(--muted);margin-top:2px">Inicio '+fmtNum(m.inicioVal,0)+' kWh → '+(m.isCurrent?'Actual':'Cierre')+' '+fmtNum(m.finVal,0)+' kWh</div>'+
         '</div>';
       }).join('')+'</div>';
   }
@@ -820,14 +928,18 @@ function renderPeriods(){
    ACCIONES DE FORMULARIO
 ============================================================ */
 function goRegister(){ showScreen('registro'); if(!editingId) resetForm(); }
-function setMonthStartCheck(v){
-  document.getElementById('fMonthStart').checked=v;
-  document.getElementById('msCheck').classList.toggle('on',v);
+function setMark(type,v){
+  const id=type==='open'?'fOpen':'fClose';
+  const box=type==='open'?'openCheck':'closeCheck';
+  document.getElementById(id).checked=v;
+  document.getElementById(box).classList.toggle('on',v);
 }
-function toggleMonthStart(e){
-  // el label envuelve el input; dejamos que el click natural cambie el checkbox salvo que se clique el input
-  if(e.target.id!=='fMonthStart'){ e.preventDefault(); const c=document.getElementById('fMonthStart'); c.checked=!c.checked; }
-  document.getElementById('msCheck').classList.toggle('on',document.getElementById('fMonthStart').checked);
+function toggleMark(e,type){
+  const id=type==='open'?'fOpen':'fClose';
+  const inp=document.getElementById(id);
+  if(e.target.id!==id){ e.preventDefault(); inp.checked=!inp.checked; }
+  setMark(type,inp.checked);
+  if(inp.checked) setMark(type==='open'?'close':'open',false); // una lectura no puede abrir y cerrar a la vez
 }
 function resetForm(){
   editingId=null;
@@ -837,10 +949,7 @@ function resetForm(){
   document.getElementById('fTime').value='08:00';
   document.getElementById('fValue').value='';
   document.getElementById('fNote').value='';
-  // sugerir "inicio de mes" si aún no hay ninguna lectura registrada este mes
-  const mk=monthKey(t);
-  const hayEsteMes=getReadings().some(r=>monthKey(parseD(r.date))===mk);
-  setMonthStartCheck(!hayEsteMes && getReadings().length>0 ? true : (!getReadings().length));
+  setMark('open',false); setMark('close',false);
   document.getElementById('formTitle').textContent='Nueva lectura';
   document.getElementById('saveBtn').innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Guardar lectura';
   document.getElementById('editActions').style.display='none';
@@ -850,25 +959,23 @@ function saveReading(){
   const time=document.getElementById('fTime').value||'08:00';
   const value=parseFloat(document.getElementById('fValue').value);
   const note=document.getElementById('fNote').value.trim();
-  const monthStart=document.getElementById('fMonthStart').checked;
+  const open=document.getElementById('fOpen').checked;
+  const close=document.getElementById('fClose').checked;
   if(!date){ toast('Selecciona la fecha',true); return; }
   if(isNaN(value)){ toast('Ingresa la lectura en kWh',true); return; }
 
   let rs=getReadings();
-  // si se marca como inicio de mes, quitamos la marca de otras lecturas del mismo mes
-  if(monthStart){
-    const mk=monthKey(parseD(date));
-    rs=rs.map(r=>(r.id!==editingId && monthKey(parseD(r.date))===mk)?{...r,monthStart:false}:r);
-  }
   if(editingId){
     const i=rs.findIndex(r=>r.id===editingId);
-    if(i>=0) rs[i]={...rs[i],date,time,value,note,monthStart};
+    if(i>=0) rs[i]={...rs[i],date,time,value,note,open,close};
     toast('Lectura actualizada');
   } else {
     const prev=rs.filter(r=>dt(r)<new Date(date+'T'+time)).sort((a,b)=>dt(b)-dt(a))[0];
-    rs.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,6),date,time,value,note,monthStart});
-    if(prev && value<prev.value) toast('Guardado · ⚠ menor que la lectura anterior',false);
-    else toast(monthStart?'Inicio de mes guardado 🏁':'Lectura guardada ✓');
+    rs.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,6),date,time,value,note,open,close});
+    if(close) toast('Período cerrado 🔴 · nuevo conteo iniciado');
+    else if(open) toast('Inicio de período marcado 🟢');
+    else if(prev && value<prev.value) toast('Guardado · ⚠ menor que la lectura anterior',false);
+    else toast('Lectura guardada ✓');
   }
   setReadings(rs);
   resetForm();
@@ -883,7 +990,7 @@ function editReading(id){
   document.getElementById('fTime').value=r.time;
   document.getElementById('fValue').value=r.value;
   document.getElementById('fNote').value=r.note||'';
-  setMonthStartCheck(!!r.monthStart);
+  setMark('open',!!r.open); setMark('close',!!r.close);
   document.getElementById('formTitle').textContent='Editar lectura';
   document.getElementById('saveBtn').innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg> Actualizar lectura';
   document.getElementById('editActions').style.display='flex';
@@ -921,7 +1028,7 @@ function showScreen(name){
 function reportScope(){ const el=document.getElementById('reportMonth'); return el&&el.value?el.value:'all'; }
 function reportContext(scope){
   const allDm=dailyMap();
-  const inScope = d => scope==='all' || monthKey(parseD(d))===scope;
+  const inScope = d => scope==='all' || cycleKey(parseD(d))===scope;
   const dayKeys=Object.keys(allDm).filter(inScope).sort();
   const dm={}; dayKeys.forEach(k=>dm[k]=allDm[k]);
   const total=dayKeys.reduce((a,k)=>a+dm[k],0);
@@ -936,8 +1043,8 @@ function reportContext(scope){
   const months = scope==='all' ? monthlyBreakdown() : monthlyBreakdown().filter(m=>m.key===scope);
   const subtitle = scope==='all'
     ? (dayKeys.length?('Período: '+fmtDateLong(dayKeys[0])+'  —  '+fmtDateLong(dayKeys[dayKeys.length-1])):'Sin datos')
-    : ('Mes de '+(months[0]?months[0].label:scope));
-  const scopeLabel = scope==='all' ? 'Completo' : (months[0]?months[0].label.replace(/\s+/g,'_'):scope);
+    : ('Ciclo: '+(months[0]?months[0].label:scope));
+  const scopeLabel = scope==='all' ? 'Completo' : (months[0]?months[0].label.replace(/[^0-9A-Za-z]+/g,'_'):scope);
   return {scope,scopeLabel,dayKeys,dm,total,totalDays,avg:totalDays?total/totalDays:0,maxD,minD,noteByDate,wk,q,months,limit:getLimit(),subtitle};
 }
 
@@ -1004,7 +1111,7 @@ function generatePDF(){
     const over=ls.state==='over';
     doc.setFillColor(over?254:236,over?242:253,over?242:245); doc.roundedRect(14,y,W-28,16,2,2,'F');
     doc.setTextColor(...muted); doc.setFontSize(8); doc.setFont('helvetica','normal');
-    doc.text('Límite mensual: '+fmtNum(s.limit,0)+' kWh',18,y+6);
+    doc.text('Límite del ciclo: '+fmtNum(s.limit,0)+' kWh',18,y+6);
     doc.setTextColor(...(over?[220,38,38]:[5,150,105])); doc.setFont('helvetica','bold'); doc.setFontSize(10);
     doc.text(over?('LÍMITE SUPERADO por '+fmtNum(m.consumo-s.limit)+' kWh'):('Dentro del límite · sobran '+fmtNum(s.limit-m.consumo)+' kWh'),18,y+12.5);
     y+=22;
@@ -1036,10 +1143,10 @@ function generatePDF(){
     didDrawPage:()=>addFooter(doc)
   });
 
-  // tabla mensual: inicio / fin / consumo (+ límite)
+  // tabla por ciclo: inicio / cierre / consumo (+ límite)
   if(s.months.length){
     const hasLimit=!!s.limit;
-    const head=['Mes','Lectura inicial','Lectura final','Consumo']; if(hasLimit)head.push('Límite');
+    const head=['Ciclo','Lectura inicial','Lectura final','Consumo']; if(hasLimit)head.push('Límite');
     const body=s.months.map(m=>{
       const row=[m.label, fmtNum(m.inicioVal)+' kWh', fmtNum(m.finVal)+' kWh', fmtNum(m.consumo)+' kWh'];
       if(hasLimit){ const over=m.consumo>s.limit; row.push(over?('Superado +'+fmtNum(m.consumo-s.limit)):('Cumplido −'+fmtNum(s.limit-m.consumo))); }
@@ -1064,7 +1171,7 @@ function generatePDF(){
     });
     // nota explicativa
     doc.setFontSize(7.5); doc.setTextColor(...muted); doc.setFont('helvetica','italic');
-    doc.text('Consumo del mes = lectura final − lectura inicial.', 14, doc.lastAutoTable.finalY+4);
+    doc.text('Consumo del ciclo = lectura final (cierre) − lectura inicial.', 14, doc.lastAutoTable.finalY+4);
   }
 
   // tablas por período
@@ -1146,7 +1253,7 @@ async function generateWord(){
   }
   if(ctx.limit && ctx.months.length===1){
     const m=ctx.months[0]; const over=m.consumo>ctx.limit;
-    kids.push(p('Límite mensual: '+fmtNum(ctx.limit,0)+' kWh  →  '+(over?('SUPERADO por '+fmtNum(m.consumo-ctx.limit)+' kWh'):('Cumplido, sobran '+fmtNum(ctx.limit-m.consumo)+' kWh')),{bold:true,color:over?RED:GREEN,after:60}));
+    kids.push(p('Límite del ciclo: '+fmtNum(ctx.limit,0)+' kWh  →  '+(over?('SUPERADO por '+fmtNum(m.consumo-ctx.limit)+' kWh'):('Cumplido, sobran '+fmtNum(ctx.limit-m.consumo)+' kWh')),{bold:true,color:over?RED:GREEN,after:60}));
   }
 
   // consumo diario
@@ -1165,11 +1272,11 @@ async function generateWord(){
     [{t:'TOTAL'},{t:fmtNum(ctx.total)+' kWh',a:AlignmentType.RIGHT},{t:''}]
   ));
 
-  // resumen mensual inicio/fin
+  // resumen por ciclo inicio/cierre
   if(ctx.months.length){
-    kids.push(h('Resumen mensual (inicio → fin)',26));
+    kids.push(h('Resumen por ciclo (inicio → cierre)',26));
     const hasLimit=!!ctx.limit;
-    const head=[{t:'Mes',a:AlignmentType.LEFT},{t:'Lectura inicial',a:AlignmentType.RIGHT},{t:'Lectura final',a:AlignmentType.RIGHT},{t:'Consumo',a:AlignmentType.RIGHT}];
+    const head=[{t:'Ciclo',a:AlignmentType.LEFT},{t:'Lectura inicial',a:AlignmentType.RIGHT},{t:'Lectura final',a:AlignmentType.RIGHT},{t:'Consumo',a:AlignmentType.RIGHT}];
     if(hasLimit)head.push({t:'Límite',a:AlignmentType.CENTER});
     const rows=ctx.months.map(m=>{
       const r=[{t:m.label,bold:true},{t:fmtNum(m.inicioVal)+' kWh',a:AlignmentType.RIGHT},{t:fmtNum(m.finVal)+' kWh',a:AlignmentType.RIGHT},{t:fmtNum(m.consumo)+' kWh',a:AlignmentType.RIGHT,bold:true}];
@@ -1177,7 +1284,7 @@ async function generateWord(){
       return r;
     });
     kids.push(table(head,rows));
-    kids.push(p('Consumo del mes = lectura final − lectura inicial.',{italics:true,color:GREY,size:16,after:60}));
+    kids.push(p('Consumo del ciclo = lectura final (cierre) − lectura inicial.',{italics:true,color:GREY,size:16,after:60}));
   }
 
   // quincena y semana
