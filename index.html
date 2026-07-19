@@ -236,11 +236,24 @@
   select:focus{outline:none;border-color:var(--primary);}
   .ms-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:#ccfbf1;color:var(--primary-d);margin-left:6px;white-space:nowrap;}
   .ms-badge.open{background:#d1fae5;color:#059669;}
-  .ms-badge.close{background:#fee2e2;color:#dc2626;}
+  .ms-badge.close{background:#e2e8f0;color:#0f172a;}
   .rcons{display:inline-block;font-size:11.5px;font-weight:700;color:var(--primary-d);background:#f0fdfa;padding:2px 9px;border-radius:8px;margin-top:5px;}
   .rcons.pending{color:var(--muted);background:#f1f5f9;}
   .l-meter{font-size:12px;color:#475569;margin-top:2px;}
   .l-meter b{color:#1e293b;font-weight:700;}
+  /* detalle expandible */
+  .detail-btn{display:inline-block;font-size:11px;font-weight:700;color:var(--primary-d);cursor:pointer;margin-top:5px;user-select:none;}
+  .detail-btn:active{opacity:.6;}
+  .note-full{font-size:12.5px;color:#334155;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-top:6px;line-height:1.5;white-space:pre-wrap;}
+  /* facturas */
+  .factura{padding:14px 16px;}
+  .fac-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;cursor:pointer;}
+  .fac-name{font-size:15px;font-weight:800;}
+  .fac-range{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .fac-kwh{text-align:right;flex-shrink:0;font-size:11px;color:var(--muted);}
+  .fac-kwh .fk{font-size:20px;font-weight:800;color:var(--text);}
+  .fac-est{margin-top:2px;font-size:11px;}
+  .fac-sub{font-size:12px;color:#475569;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
 </style>
 </head>
 <body>
@@ -363,29 +376,41 @@
       </div>
     </div>
 
-    <div class="section-title">Lecturas registradas</div>
+    <div class="section-title">Lecturas del período actual</div>
     <div class="card" id="readingsCard">
+      <div id="readingsHead" style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:6px"></div>
       <div class="rlist" id="readingsList"></div>
     </div>
   </section>
 
   <!-- ============ HISTORIAL ============ -->
   <section id="screen-historial" class="screen">
-    <div class="grid2">
-      <div class="stat">
-        <div class="t">Total consumido</div>
-        <div class="v" id="hTotal">—<small>kWh</small></div>
-        <div class="d" id="hDays">—</div>
+    <div class="seg" id="histTabs" style="margin-top:14px">
+      <button data-t="diario" class="active" onclick="switchHistTab('diario')">📆 Diario</button>
+      <button data-t="factura" onclick="switchHistTab('factura')">🧾 Facturación</button>
+    </div>
+
+    <div id="tab-diario">
+      <div class="grid2">
+        <div class="stat">
+          <div class="t">Total consumido</div>
+          <div class="v" id="hTotal">—<small>kWh</small></div>
+          <div class="d" id="hDays">—</div>
+        </div>
+        <div class="stat">
+          <div class="t">Promedio / día</div>
+          <div class="v" id="hAvg">—<small>kWh</small></div>
+          <div class="d">desde el inicio</div>
+        </div>
       </div>
-      <div class="stat">
-        <div class="t">Promedio / día</div>
-        <div class="v" id="hAvg">—<small>kWh</small></div>
-        <div class="d">desde el inicio</div>
+      <div class="card">
+        <h3>Historial diario <span class="hint" id="histHint"></span></h3>
+        <div class="rlist" id="historyList"></div>
       </div>
     </div>
-    <div class="card">
-      <h3>Historial diario <span class="hint" id="histHint"></span></h3>
-      <div class="rlist" id="historyList"></div>
+
+    <div id="tab-factura" style="display:none">
+      <div id="facturaList"></div>
     </div>
   </section>
 
@@ -526,8 +551,9 @@ function periodStarts(){
   const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
   const set=new Set();
   rs.forEach((r,i)=>{
-    if(i===0 || r.open) set.add(r.date);                                  // apertura
-    if(r.close){ const d=parseD(r.date); d.setDate(d.getDate()+1); set.add(fmtISO(d)); } // cierre → nuevo período al día siguiente
+    // apertura O cierre: esta lectura es la frontera. La lectura de cierre es
+    // a la vez el fin del período anterior y el inicio del nuevo (mismo día).
+    if(i===0 || r.open || r.close) set.add(r.date);
   });
   _psCache=[...set].sort();
   return _psCache;
@@ -586,11 +612,14 @@ function cycleDays(key){
 /* período actual (aunque aún no tenga lecturas, p.ej. tras un cierre) */
 function currentPeriod(){
   const key=cycleKey(new Date());
-  let info=monthInfo(key);
+  const mb=monthlyBreakdown();
+  let info=mb.find(x=>x.key===key);
   if(!info){
     const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
     const last=rs[rs.length-1];
-    info={key,label:cycleLabel(key),inicioVal:last?last.value:0,inicioDate:last?last.date:key,
+    const idx=mb.length+1;
+    info={key,index:idx,label:'Período '+idx+' · '+cycleLabel(key),fileTag:'Periodo'+idx,
+      inicioVal:last?last.value:0,inicioDate:last?last.date:key,
       finVal:last?last.value:0,finDate:last?last.date:key,consumo:0,isCurrent:true,single:true};
   }
   return info;
@@ -607,7 +636,9 @@ function getSegments(){
     const kwh=+(c.value-p.value).toFixed(3);
     const ms=dt(c)-dt(p);
     const days=Math.max(1,Math.round(ms/864e5));
-    segs.push({date:p.date,endDate:c.date,startTime:p.time,endTime:c.time,days,kwh,valid:kwh>=0,note:p.note||c.note||'',startValue:p.value,endValue:c.value});
+    // La observación del día de conteo = la nota escrita en la lectura de CIERRE
+    // (la del día siguiente), que es cuando el usuario describe lo que pasó ese día.
+    segs.push({date:p.date,endDate:c.date,startTime:p.time,endTime:c.time,days,kwh,valid:kwh>=0,note:c.note||'',startValue:p.value,endValue:c.value});
   }
   return segs;
 }
@@ -615,6 +646,16 @@ function getSegments(){
 function dailyMap(){
   const m={};
   getSegments().forEach(s=>{ if(!s.valid)return; m[s.date]=(m[s.date]||0)+s.kwh; });
+  return m;
+}
+/* detalle por día de conteo: medición (inicio->fin), medidor y observación */
+function dailyDetail(){
+  const m={};
+  getSegments().forEach(s=>{
+    if(!s.valid)return;
+    if(!m[s.date]) m[s.date]={date:s.date, endDate:s.endDate, startValue:s.startValue, endValue:s.endValue, note:s.note||''};
+    else { m[s.date].endDate=s.endDate; m[s.date].endValue=s.endValue; if(s.note)m[s.date].note=s.note; }
+  });
   return m;
 }
 function sumByKey(keyFn){
@@ -633,22 +674,22 @@ function stats(){
   return {total,totalDays,avg:totalDays?total/totalDays:0,dm,maxD,minD,nDays:days.length};
 }
 
-/* ---------- desglose mensual: inicio / fin / consumo ----------
-   La lectura INICIAL del mes es la marcada como "inicio de mes"; si no hay,
-   se usa la lectura previa (arrastre del mes anterior) o la primera del mes.
-   El consumo del mes = lectura final − lectura inicial. */
+/* ---------- desglose por período de facturación: inicio / cierre / consumo ----------
+   La lectura INICIAL de un período es su primera lectura propia (la de la frontera).
+   La lectura de CIERRE es la inicial del período siguiente (valor compartido).
+   El consumo del período = lectura de cierre − lectura inicial (telescopio de los
+   consumos diarios que caen dentro del período). */
 function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
 function monthlyBreakdown(){
   const rs=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
   if(!rs.length)return [];
   const keys=[];
   rs.forEach(r=>{ const k=cycleKey(parseD(r.date)); if(!keys.includes(k))keys.push(k); });
-  // lectura inicial de cada ciclo = arrastre del ciclo previo, o la primera del ciclo
+  // lectura inicial de cada período = su primera lectura propia
   const iniOf={};
   keys.forEach(k=>{
     const inCycle=rs.filter(r=>cycleKey(parseD(r.date))===k);
-    const fi=rs.indexOf(inCycle[0]);
-    iniOf[k]={iniR: fi>0 ? rs[fi-1] : inCycle[0]};
+    iniOf[k]={iniR: inCycle[0]};
   });
   const lastReading=rs[rs.length-1];
   const nowKey=cycleKey(new Date());
@@ -656,8 +697,9 @@ function monthlyBreakdown(){
   return keys.map((k,i)=>{
     const {iniR}=iniOf[k];
     const finR = keys[i+1] ? iniOf[keys[i+1]].iniR : lastReading;
+    const idx=i+1;
     return {
-      key:k, label:cycleLabel(k), short:cycleShort(k),
+      key:k, index:idx, label:'Período '+idx+' · '+cycleLabel(k), short:cycleShort(k), fileTag:'Periodo'+idx,
       inicioVal:iniR.value,inicioDate:iniR.date,finVal:finR.value,finDate:finR.date,
       consumo:Math.max(0,+(finR.value-iniR.value).toFixed(3)),
       isCurrent:(k===nowKey), single:(iniR===finR)
@@ -681,6 +723,7 @@ function render(){
   renderLimit();
   renderReadings();
   renderHistory();
+  renderFacturas();
   renderPeriods();
   renderReportMonths();
   document.getElementById('fLimit').value=getLimit()||'';
@@ -773,7 +816,7 @@ function renderReportMonths(){
   if(!sel)return;
   const prev=sel.value;
   const months=monthlyBreakdown().slice().reverse();
-  let html='<option value="all">Todos los ciclos (reporte completo)</option>';
+  let html='<option value="all">Todos los períodos (reporte completo)</option>';
   months.forEach(m=>{ html+='<option value="'+m.key+'">'+m.label+'</option>'; });
   sel.innerHTML=html;
   if(prev && [...sel.options].some(o=>o.value===prev)) sel.value=prev;
@@ -823,14 +866,23 @@ function renderChart(){
 
 function renderReadings(){
   const asc=getReadings().slice().sort((a,b)=>dt(a)-dt(b));
-  // consumo de cada lectura = diferencia hasta la siguiente lectura
+  // consumo de cada lectura = diferencia hasta la siguiente lectura (se calcula con TODO el histórico)
   const consById={};
   for(let i=0;i<asc.length-1;i++){ const diff=+(asc[i+1].value-asc[i].value).toFixed(3); consById[asc[i].id]=diff>=0?diff:null; }
   const lastId=asc.length?asc[asc.length-1].id:null;
-  const rs=asc.slice().reverse();
+  // pero SOLO se muestran las lecturas del período de facturación actual
+  const curKey=asc.length?cycleKey(new Date()):null;
+  const rs=asc.filter(r=>cycleKey(parseD(r.date))===curKey).slice().reverse();
   const el=document.getElementById('readingsList');
+  const head=document.getElementById('readingsHead');
+  const totalReadings=asc.length;
+  if(head){
+    head.innerHTML = totalReadings
+      ? 'Mostrando <b>'+rs.length+'</b> lectura'+(rs.length===1?'':'s')+' del período en curso (<b>'+cycleRange(curKey)+'</b>). Las de períodos cerrados quedan guardadas en <b>Historial → Facturación</b>.'
+      : '';
+  }
   if(!rs.length){
-    el.innerHTML='<div class="empty"><div class="e-ic">📋</div><div class="e-t">Sin lecturas aún</div><div class="e-d">Registra tu primera lectura del medidor usando el formulario de arriba.</div></div>';
+    el.innerHTML='<div class="empty"><div class="e-ic">📋</div><div class="e-t">'+(totalReadings?'Nuevo período iniciado':'Sin lecturas aún')+'</div><div class="e-d">'+(totalReadings?'Registra la primera lectura de este período de facturación.':'Registra tu primera lectura del medidor usando el formulario de arriba.')+'</div></div>';
     return;
   }
   el.innerHTML=rs.map(r=>{
@@ -840,8 +892,8 @@ function renderReadings(){
     if(r.id===lastId) consHtml='<span class="rcons pending">lectura más reciente</span>';
     else if(cons==null) consHtml='<span class="rcons pending">— lectura menor</span>';
     else consHtml='<span class="rcons">▸ '+fmtNum(cons)+' kWh consumidos</span>';
-    const mark = r.open?'<span class="ms-badge open">🟢 INICIA CONTEO</span>':r.close?'<span class="ms-badge close">🔴 CIERRE</span>':'';
-    const icoStyle = r.open?' style="background:#ecfdf5;color:#059669"':r.close?' style="background:#fef2f2;color:#dc2626"':'';
+    const mark = r.close?'<span class="ms-badge close">🏁 CIERRE / INICIO</span>':r.open?'<span class="ms-badge open">🟢 INICIA CONTEO</span>':'';
+    const icoStyle = r.close?' style="background:#f1f5f9;color:#0f172a"':r.open?' style="background:#ecfdf5;color:#059669"':'';
     return '<div class="ritem">'+
       '<div class="ico"'+icoStyle+'><span class="d">'+d.getDate()+'</span><span class="m">'+MESES[d.getMonth()]+'</span></div>'+
       '<div class="mid"><div class="l1">'+fmtNum(r.value)+' kWh'+mark+'</div>'+
@@ -869,29 +921,77 @@ function renderHistory(){
     el.innerHTML='<div class="empty"><div class="e-ic">📊</div><div class="e-t">Aún no hay consumo calculado</div><div class="e-d">Necesitas al menos 2 lecturas en días distintos para ver el consumo diario.</div></div>';
     return;
   }
-  // notas y lectura del medidor por fecha (la lectura tomada ese día)
-  const noteByDate={}, meterByDate={};
-  getSegments().forEach(sg=>{
-    if(!sg.valid)return;
-    if(sg.note && !noteByDate[sg.date]) noteByDate[sg.date]=sg.note;
-    if(meterByDate[sg.date]===undefined) meterByDate[sg.date]=sg.startValue;
-  });
-  el.innerHTML=keys.map(k=>{
-    const d=parseD(k);
-    const isMax=k===s.maxD, isMin=k===s.minD;
-    let badge='';
-    if(isMax)badge='<span class="badge max">MÁS ALTO</span>';
-    else if(isMin)badge='<span class="badge min">MÁS BAJO</span>';
-    const note=noteByDate[k];
-    const meter=meterByDate[k];
-    return '<div class="ritem">'+
-      '<div class="ico" style="'+(isMax?'background:#fef2f2;color:#ef4444':isMin?'background:#ecfdf5;color:#059669':'')+'"><span class="d">'+d.getDate()+'</span><span class="m">'+MESES[d.getMonth()]+'</span></div>'+
-      '<div class="mid"><div class="l1">'+fmtDateLong(k)+'</div>'+
-      '<div class="l-meter">Medidor: <b>'+(meter!==undefined?fmtNum(meter):'—')+' kWh</b></div>'+
-      '<div class="l2">'+(note?escapeHtml(note):'Sin observación')+'</div></div>'+
-      '<div class="amt"><div class="k">'+fmtNum(dm[k])+'</div><div class="u">kWh consumidos</div>'+badge+'</div>'+
-      '</div>';
+  const det=dailyDetail();
+  const closeSet=new Set(getReadings().filter(r=>r.close).map(r=>r.date));
+  el.innerHTML=keys.map(k=>historyRow(k,det[k],dm[k],k===s.maxD,k===s.minD,closeSet)).join('');
+}
+/* fila de un día de conteo (compartida por Diario y por el detalle de una factura) */
+function historyRow(k,dt2,consumo,isMax,isMin,closeSet){
+  const d=parseD(k);
+  const isClose = dt2 && closeSet && closeSet.has(dt2.endDate);
+  let badge='';
+  if(isMax)badge='<span class="badge max">MÁS ALTO</span>';
+  else if(isMin)badge='<span class="badge min">MÁS BAJO</span>';
+  const note=dt2?dt2.note:'';
+  const med = dt2 ? (fmtDateShort(k)+' → '+fmtDateShort(dt2.endDate)) : '—';
+  const meter = dt2 ? (fmtNum(dt2.startValue)+' → '+fmtNum(dt2.endValue)) : '—';
+  const detId='det-'+k;
+  const icoBg = isClose?'background:#e2e8f0;color:#0f172a':isMax?'background:#fef2f2;color:#ef4444':isMin?'background:#ecfdf5;color:#059669':'';
+  return '<div class="ritem">'+
+    '<div class="ico" style="'+icoBg+'"><span class="d">'+d.getDate()+'</span><span class="m">'+MESES[d.getMonth()]+'</span></div>'+
+    '<div class="mid"><div class="l1">'+fmtDateLong(k)+(isClose?' <span class="ms-badge close">🏁 CIERRE</span>':'')+'</div>'+
+    '<div class="l-meter">Medición: <b>'+med+'</b> · Medidor '+meter+' kWh</div>'+
+    '<div class="l2">'+(note?escapeHtml(note):'Sin observación')+'</div>'+
+    (note?'<span class="detail-btn" onclick="toggleDetail(\''+detId+'\')">ⓘ ver detalle</span>'+
+      '<div class="note-full" id="'+detId+'" style="display:none">'+escapeHtml(note)+'</div>':'')+
+    '</div>'+
+    '<div class="amt"><div class="k">'+fmtNum(consumo)+'</div><div class="u">kWh consumidos</div>'+badge+'</div>'+
+    '</div>';
+}
+function toggleDetail(id){
+  const el=document.getElementById(id); if(!el)return;
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+function facturaName(m){ const d=parseD(m.inicioDate); return 'Facturación de '+MESES_L[d.getMonth()].toLowerCase()+' '+d.getFullYear(); }
+function renderFacturas(){
+  const el=document.getElementById('facturaList'); if(!el)return;
+  const mb=monthlyBreakdown().slice().reverse();
+  if(!mb.length){
+    el.innerHTML='<div class="empty"><div class="e-ic">🧾</div><div class="e-t">Aún no hay facturación</div><div class="e-d">Cuando cierres un período (marca una lectura como 🏁 cierre), aquí se guardará como una factura.</div></div>';
+    return;
+  }
+  const dm=dailyMap(), det=dailyDetail(), limit=getLimit();
+  const closeSet=new Set(getReadings().filter(r=>r.close).map(r=>r.date));
+  el.innerHTML=mb.map(m=>{
+    const dayKeys=Object.keys(dm).filter(k=>cycleKey(parseD(k))===m.key).sort((a,b)=>b.localeCompare(a));
+    const days=dayKeys.length;
+    const ls=limitState(m.consumo,limit);
+    const estado = m.isCurrent
+      ? '<span style="color:var(--primary-d);font-weight:700">• En curso</span>'
+      : '<span style="color:#059669;font-weight:700">🏁 Cerrada</span>';
+    const detId='fac-'+m.key;
+    const limTag = ls?(' · <span style="color:'+(ls.state==='over'?'#dc2626':'#059669')+';font-weight:700">'+(ls.state==='over'?'▲ '+fmtNum(m.consumo-limit)+' sobre el límite':'✓ '+fmtNum(limit-m.consumo)+' bajo el límite')+'</span>'):'';
+    return '<div class="card factura">'+
+      '<div class="fac-head" onclick="toggleDetail(\''+detId+'\')">'+
+        '<div style="min-width:0"><div class="fac-name">🧾 '+facturaName(m)+'</div>'+
+        '<div class="fac-range">'+cycleLabel(m.key)+' · '+days+' día'+(days===1?'':'s')+'</div></div>'+
+        '<div class="fac-kwh"><span class="fk">'+fmtNum(m.consumo)+'</span> kWh<div class="fac-est">'+estado+'</div></div>'+
+      '</div>'+
+      '<div class="fac-sub">Inicio '+fmtNum(m.inicioVal,0)+' → '+(m.isCurrent?'Actual':'Cierre')+' '+fmtNum(m.finVal,0)+' kWh'+limTag+'</div>'+
+      '<div class="detail-btn" onclick="toggleDetail(\''+detId+'\')">ⓘ ver detalle diario</div>'+
+      '<div id="'+detId+'" style="display:none;margin-top:8px">'+
+        (days?'<div class="rlist">'+dayKeys.map(k=>historyRow(k,det[k],dm[k],false,false,closeSet)).join('')+'</div>'
+             :'<div style="font-size:12px;color:var(--muted);padding:6px 0">Aún sin días de consumo en este período.</div>')+
+      '</div>'+
+    '</div>';
   }).join('');
+}
+function switchHistTab(t){
+  document.querySelectorAll('#histTabs button').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
+  document.getElementById('tab-diario').style.display = t==='diario'?'':'none';
+  document.getElementById('tab-factura').style.display = t==='factura'?'':'none';
+  if(t==='factura') renderFacturas();
+  window.scrollTo(0,0);
 }
 
 function renderPeriods(){
@@ -907,7 +1007,7 @@ function renderPeriods(){
   const limit=getLimit();
   let monthSec='';
   if(mb.length){
-    monthSec='<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Por ciclo (inicio → cierre)</div>'+
+    monthSec='<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Períodos de conteo</div>'+
       mb.slice(0,8).map(m=>{
         const ls=limitState(m.consumo,limit);
         const tag=ls?(' <span style="font-size:10px;font-weight:700;color:'+(ls.state==='over'?'#dc2626':ls.state==='warn'?'#b45309':'#059669')+'">'+(ls.state==='over'?'▲ +'+fmtNum(m.consumo-limit):'✓ -'+fmtNum(limit-m.consumo))+'</span>'):'';
@@ -1036,16 +1136,17 @@ function reportContext(scope){
   const totalDays=segs.reduce((a,s)=>a+s.days,0);
   let maxD=null,minD=null;
   dayKeys.forEach(d=>{ if(maxD===null||dm[d]>dm[maxD])maxD=d; if(minD===null||dm[d]<dm[minD])minD=d; });
+  const detail=dailyDetail();
   const noteByDate={};
-  getSegments().forEach(sg=>{ if(sg.valid && sg.note && !noteByDate[sg.date]) noteByDate[sg.date]=sg.note; });
+  dayKeys.forEach(k=>{ if(detail[k]&&detail[k].note) noteByDate[k]=detail[k].note; });
   const wk={},q={};
   segs.forEach(s=>{ const a=isoWeekKey(parseD(s.date)); wk[a]=(wk[a]||0)+s.kwh; const b=quincenaKey(parseD(s.date)); q[b]=(q[b]||0)+s.kwh; });
   const months = scope==='all' ? monthlyBreakdown() : monthlyBreakdown().filter(m=>m.key===scope);
   const subtitle = scope==='all'
     ? (dayKeys.length?('Período: '+fmtDateLong(dayKeys[0])+'  —  '+fmtDateLong(dayKeys[dayKeys.length-1])):'Sin datos')
-    : ('Ciclo: '+(months[0]?months[0].label:scope));
-  const scopeLabel = scope==='all' ? 'Completo' : (months[0]?months[0].label.replace(/[^0-9A-Za-z]+/g,'_'):scope);
-  return {scope,scopeLabel,dayKeys,dm,total,totalDays,avg:totalDays?total/totalDays:0,maxD,minD,noteByDate,wk,q,months,limit:getLimit(),subtitle};
+    : ('Período: '+(months[0]?months[0].label:scope));
+  const scopeLabel = scope==='all' ? 'Completo' : (months[0]?months[0].fileTag:scope);
+  return {scope,scopeLabel,dayKeys,dm,total,totalDays,avg:totalDays?total/totalDays:0,maxD,minD,noteByDate,detail,wk,q,months,limit:getLimit(),subtitle};
 }
 
 /* ============================================================
@@ -1117,36 +1218,40 @@ function generatePDF(){
     y+=22;
   }
 
-  // tabla consumo diario
+  // tabla consumo diario: Día de conteo | Días de medición | Consumo | Observación
   const dayRows=dayKeys.map(k=>{
     let tag=''; if(k===s.maxD)tag=' (máx)'; else if(k===s.minD)tag=' (mín)';
-    return [fmtDateLong(k), fmtNum(dm[k])+' kWh'+tag, s.noteByDate[k]||'—'];
+    const dt2=s.detail[k];
+    const med = dt2 ? (fmtDateShort(k)+'  →  '+fmtDateShort(dt2.endDate)) : fmtDateShort(k);
+    return [fmtDateLong(k), med, fmtNum(dm[k])+' kWh'+tag, s.noteByDate[k]||'—'];
   });
   doc.autoTable({
     startY:y,
-    head:[['Fecha','Consumo','Observación']],
+    head:[['Día de conteo','Días de medición','Consumo','Observación']],
     body:dayRows,
-    foot:[['TOTAL', fmtNum(s.total)+' kWh','']],
+    foot:[['TOTAL','', fmtNum(s.total)+' kWh','']],
     theme:'grid',
-    headStyles:{fillColor:teal,textColor:255,fontStyle:'bold',fontSize:9},
+    headStyles:{fillColor:teal,textColor:255,fontStyle:'bold',fontSize:8.5},
     footStyles:{fillColor:[15,23,42],textColor:255,fontStyle:'bold'},
-    bodyStyles:{fontSize:8.5,textColor:dark},
-    columnStyles:{0:{cellWidth:42},1:{cellWidth:38},2:{cellWidth:'auto'}},
+    bodyStyles:{fontSize:8,textColor:dark},
+    columnStyles:{0:{cellWidth:34},1:{cellWidth:34,textColor:muted},2:{cellWidth:26},3:{cellWidth:'auto'}},
     didParseCell:d=>{
       if(d.section==='body'){
         const k=dayKeys[d.row.index];
-        if(k===s.maxD && d.column.index===1){ d.cell.styles.textColor=[185,28,28]; d.cell.styles.fontStyle='bold'; }
-        if(k===s.minD && d.column.index===1){ d.cell.styles.textColor=[5,150,105]; d.cell.styles.fontStyle='bold'; }
+        if(k===s.maxD && d.column.index===2){ d.cell.styles.textColor=[185,28,28]; d.cell.styles.fontStyle='bold'; }
+        if(k===s.minD && d.column.index===2){ d.cell.styles.textColor=[5,150,105]; d.cell.styles.fontStyle='bold'; }
       }
     },
     margin:{left:14,right:14},
     didDrawPage:()=>addFooter(doc)
   });
+  doc.setFontSize(7.5); doc.setTextColor(...muted); doc.setFont('helvetica','italic');
+  doc.text('Cada día de conteo se mide de 8:00 AM a 8:00 AM del día siguiente (abarca 2 fechas de medición).', 14, doc.lastAutoTable.finalY+4);
 
   // tabla por ciclo: inicio / cierre / consumo (+ límite)
   if(s.months.length){
     const hasLimit=!!s.limit;
-    const head=['Ciclo','Lectura inicial','Lectura final','Consumo']; if(hasLimit)head.push('Límite');
+    const head=['Período','Lectura inicial','Lectura final','Consumo']; if(hasLimit)head.push('Límite');
     const body=s.months.map(m=>{
       const row=[m.label, fmtNum(m.inicioVal)+' kWh', fmtNum(m.finVal)+' kWh', fmtNum(m.consumo)+' kWh'];
       if(hasLimit){ const over=m.consumo>s.limit; row.push(over?('Superado +'+fmtNum(m.consumo-s.limit)):('Cumplido −'+fmtNum(s.limit-m.consumo))); }
@@ -1256,27 +1361,31 @@ async function generateWord(){
     kids.push(p('Límite del ciclo: '+fmtNum(ctx.limit,0)+' kWh  →  '+(over?('SUPERADO por '+fmtNum(m.consumo-ctx.limit)+' kWh'):('Cumplido, sobran '+fmtNum(ctx.limit-m.consumo)+' kWh')),{bold:true,color:over?RED:GREEN,after:60}));
   }
 
-  // consumo diario
+  // consumo diario: Día de conteo | Días de medición | Consumo | Observación
   kids.push(h('Consumo diario',26));
   const dailyRows=ctx.dayKeys.map(k=>{
     const isMax=k===ctx.maxD,isMin=k===ctx.minD;
+    const d2=ctx.detail[k];
+    const med=d2?(fmtDateShort(k)+' → '+fmtDateShort(d2.endDate)):fmtDateShort(k);
     return [
       {t:fmtDateLong(k)},
+      {t:med,color:GREY},
       {t:fmtNum(ctx.dm[k])+' kWh'+(isMax?' (máx)':isMin?' (mín)':''),a:AlignmentType.RIGHT,bold:isMax||isMin,color:isMax?RED:isMin?GREEN:DARK},
       {t:ctx.noteByDate[k]||'—'}
     ];
   });
   kids.push(table(
-    [{t:'Fecha',a:AlignmentType.LEFT},{t:'Consumo',a:AlignmentType.RIGHT},{t:'Observación',a:AlignmentType.LEFT}],
+    [{t:'Día de conteo',a:AlignmentType.LEFT},{t:'Días de medición',a:AlignmentType.LEFT},{t:'Consumo',a:AlignmentType.RIGHT},{t:'Observación',a:AlignmentType.LEFT}],
     dailyRows,
-    [{t:'TOTAL'},{t:fmtNum(ctx.total)+' kWh',a:AlignmentType.RIGHT},{t:''}]
+    [{t:'TOTAL'},{t:''},{t:fmtNum(ctx.total)+' kWh',a:AlignmentType.RIGHT},{t:''}]
   ));
+  kids.push(p('Cada día de conteo se mide de 8:00 AM a 8:00 AM del día siguiente (abarca 2 fechas de medición).',{italics:true,color:GREY,size:16,after:60}));
 
   // resumen por ciclo inicio/cierre
   if(ctx.months.length){
-    kids.push(h('Resumen por ciclo (inicio → cierre)',26));
+    kids.push(h('Resumen por período (inicio → cierre)',26));
     const hasLimit=!!ctx.limit;
-    const head=[{t:'Ciclo',a:AlignmentType.LEFT},{t:'Lectura inicial',a:AlignmentType.RIGHT},{t:'Lectura final',a:AlignmentType.RIGHT},{t:'Consumo',a:AlignmentType.RIGHT}];
+    const head=[{t:'Período',a:AlignmentType.LEFT},{t:'Lectura inicial',a:AlignmentType.RIGHT},{t:'Lectura final',a:AlignmentType.RIGHT},{t:'Consumo',a:AlignmentType.RIGHT}];
     if(hasLimit)head.push({t:'Límite',a:AlignmentType.CENTER});
     const rows=ctx.months.map(m=>{
       const r=[{t:m.label,bold:true},{t:fmtNum(m.inicioVal)+' kWh',a:AlignmentType.RIGHT},{t:fmtNum(m.finVal)+' kWh',a:AlignmentType.RIGHT},{t:fmtNum(m.consumo)+' kWh',a:AlignmentType.RIGHT,bold:true}];
